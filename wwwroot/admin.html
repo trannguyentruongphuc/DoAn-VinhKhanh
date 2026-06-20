@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin - Vĩnh Khánh Tour Guide</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  :root {
+    --primary: #c0392b;
+    --primary-dark: #962d22;
+    --bg: #f5f5f5;
+    --card-bg: #ffffff;
+    --text: #2c2c2c;
+    --muted: #777;
+    --border: #e0e0e0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 16px 20px;
+  }
+  header h1 { margin: 0; font-size: 1.2rem; }
+
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  section h2 {
+    margin-top: 0;
+    font-size: 1.05rem;
+    color: var(--primary-dark);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { background: #faf3f2; color: var(--primary-dark); }
+  tr:hover { background: #fafafa; }
+
+  .audio-tag {
+    display: inline-block;
+    background: #eef;
+    color: #334;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    margin-right: 4px;
+  }
+
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+  input, select {
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.88rem;
+  }
+  .btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    height: 36px;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn-danger { background: #888; }
+  .btn-danger:hover { background: #666; }
+
+  #chart-section canvas { max-width: 100%; }
+  #chart-placeholder { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<header><h1>🛠️ Trang quản trị — Vĩnh Khánh Tour Guide</h1></header>
+
+<main>
+
+  <!-- ============ 1. DANH SÁCH POI + AUDIO ============ -->
+  <section>
+    <h2>1. Danh sách điểm tham quan (POI)</h2>
+    <table id="poi-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Tên</th><th>Tọa độ</th><th>Bán kính</th><th>Priority</th><th>Audio đã gán</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- ============ 2. FORM THÊM POI MỚI ============ -->
+  <section>
+    <h2>2. Thêm điểm tham quan mới</h2>
+    <form id="poi-form">
+      <div class="field"><label>Tên</label><input type="text" id="poi-name" required></div>
+      <div class="field"><label>Mô tả</label><input type="text" id="poi-desc"></div>
+      <div class="field"><label>Lat</label><input type="number" step="0.000001" id="poi-lat" required></div>
+      <div class="field"><label>Lng</label><input type="number" step="0.000001" id="poi-lng" required></div>
+      <div class="field"><label>Bán kính (m)</label><input type="number" id="poi-radius" value="100"></div>
+      <div class="field"><label>Priority</label><input type="number" id="poi-priority" value="1"></div>
+      <button type="submit" class="btn">Thêm POI</button>
+    </form>
+  </section>
+
+  <!-- ============ 3. FORM GÁN AUDIO ĐA NGÔN NGỮ CHO POI ============ -->
+  <section>
+    <h2>3. Gán Audio (theo ngôn ngữ) cho một điểm</h2>
+    <form id="audio-form">
+      <div class="field">
+        <label>POI</label>
+        <select id="audio-poi-id" required></select>
+      </div>
+      <div class="field">
+        <label>Ngôn ngữ</label>
+        <select id="audio-lang">
+          <option value="vi">vi - Tiếng Việt</option>
+          <option value="en">en - English</option>
+          <option value="ko">ko - 한국어</option>
+          <option value="zh">zh - 中文</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Link Audio (mp3 / Drive)</label>
+        <input type="text" id="audio-url" placeholder="/audio/poi1_en.mp3" required>
+      </div>
+      <div class="field">
+        <label>Văn bản thuyết minh</label>
+        <input type="text" id="audio-transcript" placeholder="Nội dung thuyết minh...">
+      </div>
+      <button type="submit" class="btn">Gán Audio</button>
+    </form>
+  </section>
+
+  <!-- ============ 4. ANALYTICS (Người-B hoàn thiện với Chart.js) ============ -->
+  <section id="chart-section">
+    <h2>4. Thống kê: Top 5 địa điểm có lượt nghe nhiều nhất</h2>
+    <p id="chart-placeholder">
+      TODO (Người-B): nhúng Chart.js (&lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;),
+      gọi GET /api/Analytics/top-pois, rồi vẽ biểu đồ cột vào &lt;canvas id="topPoisChart"&gt;.
+    </p>
+    <canvas id="topPoisChart" height="120"></canvas>
+  </section>
+
+</main>
+
+<script>
+  const API_BASE = "http://localhost:5555";
+
+  // ====== TẢI DANH SÁCH POI + AUDIO ======
+  function loadPois() {
+    fetch(`${API_BASE}/api/POI`)
+      .then(res => res.json())
+      .then(pois => {
+        renderPoiTable(pois);
+        renderPoiSelect(pois);
+      })
+      .catch(err => console.error("Lỗi tải POI:", err));
+  }
+
+  function renderPoiTable(pois) {
+    const tbody = document.querySelector('#poi-table tbody');
+    tbody.innerHTML = '';
+
+    pois.forEach(poi => {
+      const tr = document.createElement('tr');
+
+      const audioTags = (poi.audios || [])
+        .map(a => `<span class="audio-tag">${a.languageCode}</span>`)
+        .join('') || '<span style="color:#aaa">Chưa có audio</span>';
+
+      tr.innerHTML = `
+        <td>${poi.id}</td>
+        <td>${poi.name}</td>
+        <td>${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}</td>
+        <td>${poi.radius} m</td>
+        <td>${poi.priority}</td>
+        <td>${audioTags}</td>
+        <td><button class="btn btn-danger" data-id="${poi.id}">Xóa</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('button[data-id]').forEach(btn => {
+      btn.addEventListener('click', () => deletePoi(btn.dataset.id));
+    });
+  }
+
+  function renderPoiSelect(pois) {
+    const select = document.getElementById('audio-poi-id');
+    select.innerHTML = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
+  }
+
+  function deletePoi(id) {
+    if (!confirm(`Xóa POI #${id}?`)) return;
+    fetch(`${API_BASE}/api/POI/${id}`, { method: 'DELETE' })
+      .then(() => loadPois())
+      .catch(err => console.error("Lỗi xóa POI:", err));
+  }
+
+  // ====== FORM THÊM POI ======
+  document.getElementById('poi-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newPoi = {
+      name: document.getElementById('poi-name').value,
+      description: document.getElementById('poi-desc').value,
+      lat: parseFloat(document.getElementById('poi-lat').value),
+      lng: parseFloat(document.getElementById('poi-lng').value),
+      radius: parseFloat(document.getElementById('poi-radius').value) || 100,
+      priority: parseInt(document.getElementById('poi-priority').value) || 1
+    };
+
+    fetch(`${API_BASE}/api/POI`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPoi)
+    })
+      .then(res => {
+        if (res.ok) {
+          alert("Thêm POI thành công!");
+          e.target.reset();
+          loadPois();
+        } else {
+          alert("Lỗi khi thêm POI.");
+        }
+      })
+      .catch(err => console.error("Lỗi POST POI:", err));
+  });
+
+  // ====== FORM GÁN AUDIO ======
+  document.getElementById('audio-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newAudio = {
+      poiId: parseInt(document.getElementById('audio-poi-id').value),
+      languageCode: document.getElementById('audio-lang').value,
+      audioUrl: document.getElementById('audio-url').value,
+      transcriptText: document.getElementById('audio-transcript').value
+    };
+
+    fetch(`${API_BASE}/api/Audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAudio)
+    })
+      .then(res => {
+        if (res.ok) {
+          alert("Gán audio thành công!");
+          e.target.reset();
+          loadPois();
+        } else {
+          return res.json().then(data => alert("Lỗi: " + (data.message || "không gán được audio")));
+        }
+      })
+      .catch(err => console.error("Lỗi POST Audio:", err));
+  });
+
+  // ====== KHỞI ĐỘNG ======
+  loadPois();
+
+  // ====== 5. VẼ BIỂU ĐỒ THỐNG KÊ (CHART.JS) ======
+  function loadTopPoisChart() {
+    fetch(`${API_BASE}/api/Analytics/top-pois`)
+      .then(res => {
+        if(!res.ok) throw new Error("API chưa có hoặc lỗi");
+        return res.json();
+      })
+      .then(data => {
+        // Ẩn dòng chữ TODO trên giao diện
+        const placeholder = document.getElementById('chart-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        // Lấy thẻ canvas để vẽ
+        const ctx = document.getElementById('topPoisChart').getContext('2d');
+
+        // Bóc tách dữ liệu từ API thành mảng Tên và mảng Lượt nghe
+        const labels = data.map(item => item.poiName || `POI #${item.poiId}`);
+        const counts = data.map(item => item.listenCount);
+
+        // Vẽ biểu đồ cột
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Số lượt nghe',
+              data: counts,
+              backgroundColor: '#c0392b',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 } // Chỉ hiển thị số nguyên
+              }
+            }
+          }
+        });
+      })
+      .catch(err => {
+        console.error("Lỗi tải dữ liệu thống kê:", err);
+        document.getElementById('chart-placeholder').textContent = "Chưa có dữ liệu thống kê hoặc API chưa được backend bật.";
+      });
+  }
+
+  // Khởi động biểu đồ
+  loadTopPoisChart();
+</script>
+
+</body>
+</html>

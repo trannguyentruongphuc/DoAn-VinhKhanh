@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vĩnh Khánh Tour Guide</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<style>
+  :root {
+    --primary: #c0392b;
+    --primary-dark: #962d22;
+    --bg: #fafafa;
+    --card-bg: #ffffff;
+    --text: #2c2c2c;
+    --muted: #777;
+    --border: #e3e3e3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  #language-select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.9rem;
+  }
+  #map {
+    height: 60vh;
+    width: 100%;
+  }
+  #status-bar {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    color: var(--muted);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+  }
+  #now-playing {
+    margin: 12px 16px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: none;
+  }
+  #now-playing.active { display: block; }
+  #now-playing h3 {
+    margin: 0 0 6px;
+    color: var(--primary-dark);
+    font-size: 1.05rem;
+  }
+  #now-playing p {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  audio { width: 100%; }
+
+  #qr-section {
+    margin: 12px 16px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+  #qr-section h3 { margin: 0 0 8px; font-size: 1rem; }
+  #qr-reader { width: 100%; max-width: 360px; margin-top: 10px; }
+  .btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn:hover { background: var(--primary-dark); }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    padding: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍜 Vĩnh Khánh Tour Guide</h1>
+  <select id="language-select">
+    <option value="vi">🇻🇳 Tiếng Việt</option>
+    <option value="en">🇬🇧 English</option>
+    <option value="ko">🇰🇷 한국어</option>
+    <option value="zh">🇨🇳 中文</option>
+  </select>
+</header>
+
+<div id="status-bar">Đang chờ định vị GPS...</div>
+
+<div id="map"></div>
+
+<div id="now-playing">
+  <h3 id="np-title">—</h3>
+  <p id="np-desc"></p>
+  <audio id="np-audio" controls></audio>
+</div>
+
+<!--
+  KHU VỰC QR CODE (TV3 / Người-B hoàn thiện ở đây)
+  Yêu cầu: dùng thư viện html5-qrcode, sau khi quét được ID,
+  gọi hàm window.playPoiById(id) bên dưới để phát audio,
+  hàm này đã tự xử lý override cooldown.
+-->
+<div id="qr-section">
+  <h3>📷 Quét QR thuyết minh chủ động</h3>
+  <button class="btn" id="qr-toggle-btn">Bật camera quét QR</button>
+  <div id="qr-reader"></div>
+</div>
+
+<footer>Đồ án môn C# — Thuyết minh tự động đa ngôn ngữ phố ẩm thực Vĩnh Khánh</footer>
+
+<script>
+  const API_BASE = "http://localhost:5555";
+
+  // ====== 1. KHỞI TẠO BẢN ĐỒ ======
+  const map = L.map('map').setView([10.7595, 106.6965], 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  let userMarker = null;
+  const poiMarkers = {};
+
+  // ====== 2. ĐA NGÔN NGỮ (UI TEXT) ======
+  // Người-B mở rộng object này khi cần thêm chữ trên giao diện.
+  const I18N = {
+    vi: { waiting: "Đang chờ định vị GPS...", inRange: (n) => `Bạn đang ở gần: ${n}` , outRange: "Không có điểm nào gần bạn." },
+    en: { waiting: "Waiting for GPS location...", inRange: (n) => `You are near: ${n}`, outRange: "No point of interest nearby." },
+    ko: { waiting: "GPS 위치를 기다리는 중...", inRange: (n) => `근처 위치: ${n}`, outRange: "근처에 명소가 없습니다." },
+    zh: { waiting: "正在等待GPS定位...", inRange: (n) => `您靠近: ${n}`, outRange: "附近没有景点。" }
+  };
+
+  let currentLang = "vi";
+  document.getElementById('language-select').addEventListener('change', (e) => {
+    currentLang = e.target.value;
+    document.getElementById('status-bar').textContent = I18N[currentLang].waiting;
+  });
+
+  // ====== 3. COOLDOWN CHỐNG SPAM ÂM THANH ======
+  let lastPlayedPoiId = null;
+  let cooldownActive = false;
+  const COOLDOWN_MS = 30000; // 30 giây, có thể chỉnh khi demo
+
+  // ====== 4. PHÁT AUDIO ======
+  const audioEl = document.getElementById('np-audio');
+
+  function renderNowPlaying(poi, audioUrl, transcriptText) {
+    document.getElementById('now-playing').classList.add('active');
+    document.getElementById('np-title').textContent = poi.name;
+    document.getElementById('np-desc').textContent = transcriptText || poi.description;
+    audioEl.src = audioUrl;
+    audioEl.play().catch(() => {/* trình duyệt có thể chặn autoplay, người dùng bấm play thủ công */});
+  }
+
+  // Hàm dùng chung: gọi khi GPS kích hoạt HOẶC khi quét QR (QR sẽ override cooldown)
+  function triggerAudio(data, { overrideCooldown = false } = {}) {
+    if (!data.triggered) return;
+
+    if (!overrideCooldown) {
+      if (cooldownActive && data.poi.id === lastPlayedPoiId) return; // đang cooldown, bỏ qua
+    }
+
+    lastPlayedPoiId = data.poi.id;
+    renderNowPlaying(data.poi, data.audioUrl, data.transcriptText);
+    document.getElementById('status-bar').textContent = I18N[currentLang].inRange(data.poi.name);
+
+    if (!overrideCooldown) {
+      cooldownActive = true;
+      setTimeout(() => { cooldownActive = false; }, COOLDOWN_MS);
+    }
+  }
+
+  // ====== 5. GỌI API GEOFENCE THEO GPS THỜI GIAN THỰC ======
+  function checkLocation(lat, lng) {
+    fetch(`${API_BASE}/api/location/check?lat=${lat}&lng=${lng}&lang=${currentLang}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.triggered) {
+          triggerAudio(data, { overrideCooldown: false });
+        } else {
+          document.getElementById('status-bar').textContent = I18N[currentLang].outRange;
+        }
+      })
+      .catch(err => console.error("Lỗi gọi API location/check:", err));
+  }
+
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+
+      if (!userMarker) {
+        userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Vị trí của bạn");
+      } else {
+        userMarker.setLatLng([latitude, longitude]);
+      }
+
+      checkLocation(latitude, longitude);
+    }, (err) => {
+      console.error("Lỗi GPS:", err);
+      document.getElementById('status-bar').textContent = "Không lấy được vị trí GPS. Hãy cấp quyền định vị.";
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+  }
+
+  // ====== 6. HIỂN THỊ TẤT CẢ POI LÊN BẢN ĐỒ ======
+  fetch(`${API_BASE}/api/POI`)
+    .then(res => res.json())
+    .then(pois => {
+      pois.forEach(poi => {
+        const marker = L.marker([poi.lat, poi.lng]).addTo(map).bindPopup(poi.name);
+        poiMarkers[poi.id] = marker;
+      });
+    })
+    .catch(err => console.error("Lỗi tải danh sách POI:", err));
+
+  // ====== 7. HÀM DÙNG CHO QR CODE (Người-B gọi hàm này sau khi quét được ID) ======
+  // Override cooldown = true => luôn phát, bất kể đang trong thời gian chờ GPS
+  window.playPoiById = function (poiId) {
+    fetch(`${API_BASE}/api/POI/${poiId}`)
+      .then(res => res.json())
+      .then(poi => {
+        const audio = poi.audios?.find(a => a.languageCode === currentLang)
+                   || poi.audios?.find(a => a.languageCode === "vi")
+                   || poi.audios?.[0];
+
+        if (!audio) {
+          alert("Điểm này chưa có audio.");
+          return;
+        }
+
+        triggerAudio({
+          triggered: true,
+          poi: poi,
+          audioUrl: audio.audioUrl,
+          transcriptText: audio.transcriptText
+        }, { overrideCooldown: true });
+      })
+      .catch(err => console.error("Lỗi lấy POI theo ID (QR):", err));
+  };
+
+// ====== 8. HOÀN THIỆN: BẬT/TẮT CAMERA QR ======
+  let html5QrCode;
+  let isQrReaderActive = false;
+
+  document.getElementById('qr-toggle-btn').addEventListener('click', () => {
+    // Khởi tạo đối tượng quét nếu chưa có
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("qr-reader");
+    }
+
+    if (isQrReaderActive) {
+      // Đang bật -> Bấm để tắt camera
+      html5QrCode.stop().then(() => {
+        isQrReaderActive = false;
+        document.getElementById('qr-toggle-btn').textContent = "Bật camera quét QR";
+      }).catch(err => console.error("Lỗi tắt camera: ", err));
+    } else {
+      // Đang tắt -> Bấm để bật camera
+      html5QrCode.start(
+        { facingMode: "environment" }, // Ưu tiên sử dụng camera sau của điện thoại
+        {
+          fps: 10, // Tốc độ quét 10 khung hình/giây
+          qrbox: { width: 250, height: 250 } // Khung vuông định vị QR
+        },
+        (decodedText, decodedResult) => {
+          // XỬ LÝ KHI QUÉT THÀNH CÔNG
+          const poiId = parseInt(decodedText);
+          
+          if (!isNaN(poiId)) {
+            // 1. Tắt camera ngay lập tức để tránh quét spam nhiều lần
+            html5QrCode.stop().then(() => {
+              isQrReaderActive = false;
+              document.getElementById('qr-toggle-btn').textContent = "Bật camera quét QR";
+              
+              // 2. Gọi hàm đã có sẵn để phát nhạc dựa trên ID vừa quét
+              window.playPoiById(poiId);
+              
+            }).catch(err => console.error("Lỗi dừng camera sau khi quét: ", err));
+          }
+        },
+        (errorMessage) => {
+          // Bỏ qua cảnh báo liên tục khi camera chưa nhìn thấy mã QR
+        }
+      ).then(() => {
+        // Cập nhật UI khi bật camera thành công
+        isQrReaderActive = true;
+        document.getElementById('qr-toggle-btn').textContent = "Tắt camera";
+      }).catch(err => {
+        console.error("Lỗi khởi động camera: ", err);
+        alert("Không thể mở camera. Vui lòng kiểm tra và cấp quyền truy cập camera trên trình duyệt của bạn.");
+      });
+    }
+  });
+</script>
+</body>
+</html>
