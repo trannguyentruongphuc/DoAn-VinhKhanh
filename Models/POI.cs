@@ -29,7 +29,10 @@ namespace TourGuideApp.Models
         public int Priority { get; set; } = 1;
 
         // Quan hệ 1-N: 1 POI có nhiều bản Audio (mỗi ngôn ngữ 1 file)
-        [JsonIgnore]
+        // Lưu ý: KHÔNG đặt [JsonIgnore] ở đây — admin.html và index.html cần
+        // nhận field "audios" trong JSON trả về để hiển thị danh sách audio đã gán
+        // và để window.playPoiById() tìm đúng audio theo ngôn ngữ khi quét QR.
+        // Chiều ngược lại (Audio.POI) vẫn giữ [JsonIgnore] để tránh JSON lặp vô hạn.
         public List<Audio> Audios { get; set; } = new List<Audio>();
     }
 }

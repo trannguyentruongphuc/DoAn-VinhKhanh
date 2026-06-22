@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TourGuideApp.Data;
+using TourGuideApp.Models;
 
 namespace TourGuideApp.Controllers
 {
@@ -47,5 +48,28 @@ namespace TourGuideApp.Controllers
 
             return Ok(data);
         }
+        
+    // POST /api/Analytics/increment/{poiId}?lang=vi -> Ghi nhận 1 lượt nghe
+        [HttpPost("increment/{poiId}")]
+        public async Task<IActionResult> LogListenHistory(int poiId, [FromQuery] string lang = "vi")
+        {
+            // 1. Kiểm tra xem quán ăn này có tồn tại trong Database không
+            var poiExists = await _context.POIs.AnyAsync(p => p.Id == poiId);
+            if (!poiExists) return NotFound(new { message = "Không tìm thấy địa điểm." });
+
+            // 2. Tạo một dòng lịch sử mới (Ghi nhận Quán nào, Ngôn ngữ gì)
+            var history = new ListenHistory
+            {
+                POIId = poiId,
+                LanguageCode = lang
+            };
+
+            // 3. Ném vào bảng Lịch sử và Lưu lại
+            _context.ListenHistories.Add(history);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Đã lưu lịch sử nghe điểm {poiId} bằng tiếng {lang}" });
+        }
+  
     }
 }

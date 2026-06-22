@@ -65,6 +65,17 @@
     font-size: 0.75rem;
     margin-right: 4px;
   }
+  .audio-remove-btn {
+    background: none;
+    border: none;
+    color: #966;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    margin-left: 4px;
+    padding: 0;
+  }
+  .audio-remove-btn:hover { color: #c0392b; }
 
   form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
   .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
@@ -117,8 +128,8 @@
     <form id="poi-form">
       <div class="field"><label>Tên</label><input type="text" id="poi-name" required></div>
       <div class="field"><label>Mô tả</label><input type="text" id="poi-desc"></div>
-      <div class="field"><label>Lat</label><input type="number" step="0.000001" id="poi-lat" required></div>
-      <div class="field"><label>Lng</label><input type="number" step="0.000001" id="poi-lng" required></div>
+      <div class="field"><label>Lat</label><input type="number" step="any" id="poi-lat" required></div>
+      <div class="field"><label>Lng</label><input type="number" step="any" id="poi-lng" required></div>
       <div class="field"><label>Bán kính (m)</label><input type="number" id="poi-radius" value="100"></div>
       <div class="field"><label>Priority</label><input type="number" id="poi-priority" value="1"></div>
       <button type="submit" class="btn">Thêm POI</button>
@@ -167,7 +178,11 @@
 </main>
 
 <script>
-  const API_BASE = "http://localhost:5555";
+  // Tự nhận diện địa chỉ server dựa theo hostname đang mở trang web.
+  // - Mở trên máy tính bằng http://localhost:5555/...        -> gọi API tới localhost:5555
+  // - Mở trên điện thoại bằng http://192.168.x.x:5555/...    -> gọi API tới 192.168.x.x:5555
+  // Nhờ vậy không cần sửa code khi đổi giữa máy tính và điện thoại.
+  const API_BASE = `${window.location.protocol}//${window.location.hostname}:5555`;
 
   // ====== TẢI DANH SÁCH POI + AUDIO ======
   function loadPois() {
@@ -188,7 +203,7 @@
       const tr = document.createElement('tr');
 
       const audioTags = (poi.audios || [])
-        .map(a => `<span class="audio-tag">${a.languageCode}</span>`)
+        .map(a => `<span class="audio-tag">${a.languageCode}<button class="audio-remove-btn" data-audio-id="${a.id}" title="Xóa audio ${a.languageCode}">×</button></span>`)
         .join('') || '<span style="color:#aaa">Chưa có audio</span>';
 
       tr.innerHTML = `
@@ -206,6 +221,20 @@
     tbody.querySelectorAll('button[data-id]').forEach(btn => {
       btn.addEventListener('click', () => deletePoi(btn.dataset.id));
     });
+
+    tbody.querySelectorAll('button[data-audio-id]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteAudio(btn.dataset.audioId);
+      });
+    });
+  }
+
+  function deleteAudio(audioId) {
+    if (!confirm(`Xóa audio #${audioId}?`)) return;
+    fetch(`${API_BASE}/api/Audio/${audioId}`, { method: 'DELETE' })
+      .then(() => loadPois())
+      .catch(err => console.error("Lỗi xóa Audio:", err));
   }
 
   function renderPoiSelect(pois) {
@@ -315,6 +344,8 @@
             scales: {
               y: {
                 beginAtZero: true,
+                suggestedMax: 50,
+              
                 ticks: { stepSize: 1 } // Chỉ hiển thị số nguyên
               }
             }
@@ -330,6 +361,7 @@
   // Khởi động biểu đồ
   loadTopPoisChart();
 </script>
+
 
 </body>
 </html>

@@ -144,7 +144,11 @@
 <footer>Đồ án môn C# — Thuyết minh tự động đa ngôn ngữ phố ẩm thực Vĩnh Khánh</footer>
 
 <script>
-  const API_BASE = "http://localhost:5555";
+  // Tự nhận diện địa chỉ server dựa theo hostname đang mở trang web.
+  // - Mở trên máy tính bằng http://localhost:5555/...        -> gọi API tới localhost:5555
+  // - Mở trên điện thoại bằng http://192.168.x.x:5555/...    -> gọi API tới 192.168.x.x:5555
+  // Nhờ vậy không cần sửa code khi đổi giữa máy tính và điện thoại.
+  const API_BASE = `${window.location.protocol}//${window.location.hostname}:5555`;
 
   // ====== 1. KHỞI TẠO BẢN ĐỒ ======
   const map = L.map('map').setView([10.7595, 106.6965], 17);
@@ -179,11 +183,22 @@
   const audioEl = document.getElementById('np-audio');
 
   function renderNowPlaying(poi, audioUrl, transcriptText) {
+    // Dừng audio đang phát (nếu có) trước khi nạp audio mới, tránh tiếng đè tiếng
+    // khi quét QR liên tiếp hoặc đi qua điểm mới trong lúc audio cũ chưa hết.
+    audioEl.pause();
+    audioEl.currentTime = 0;
+
     document.getElementById('now-playing').classList.add('active');
     document.getElementById('np-title').textContent = poi.name;
     document.getElementById('np-desc').textContent = transcriptText || poi.description;
     audioEl.src = audioUrl;
     audioEl.play().catch(() => {/* trình duyệt có thể chặn autoplay, người dùng bấm play thủ công */});
+    // --- ĐOẠN CODE BẮN TÍN HIỆU CỘNG ĐIỂM ---
+    fetch(`${API_BASE}/api/Analytics/increment/${poi.id}?lang=${currentLang}`, { 
+        method: 'POST' 
+    })
+    .then(res => console.log(`Đã gửi thống kê: Điểm #${poi.id}, Tiếng: ${currentLang}`))
+    .catch(err => console.error("Lỗi gửi thống kê:", err));
   }
 
   // Hàm dùng chung: gọi khi GPS kích hoạt HOẶC khi quét QR (QR sẽ override cooldown)
@@ -207,7 +222,10 @@
   // ====== 5. GỌI API GEOFENCE THEO GPS THỜI GIAN THỰC ======
   function checkLocation(lat, lng) {
     fetch(`${API_BASE}/api/location/check?lat=${lat}&lng=${lng}&lang=${currentLang}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`API trả lỗi HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (data.triggered) {
           triggerAudio(data, { overrideCooldown: false });
@@ -250,7 +268,10 @@
   // Override cooldown = true => luôn phát, bất kể đang trong thời gian chờ GPS
   window.playPoiById = function (poiId) {
     fetch(`${API_BASE}/api/POI/${poiId}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Không tìm thấy POI #${poiId} (HTTP ${res.status})`);
+        return res.json();
+      })
       .then(poi => {
         const audio = poi.audios?.find(a => a.languageCode === currentLang)
                    || poi.audios?.find(a => a.languageCode === "vi")
@@ -268,7 +289,10 @@
           transcriptText: audio.transcriptText
         }, { overrideCooldown: true });
       })
-      .catch(err => console.error("Lỗi lấy POI theo ID (QR):", err));
+      .catch(err => {
+        console.error("Lỗi lấy POI theo ID (QR):", err);
+        alert(`Mã QR không hợp lệ hoặc điểm #${poiId} không tồn tại trong hệ thống.`);
+      });
   };
 
 // ====== 8. HOÀN THIỆN: BẬT/TẮT CAMERA QR ======
