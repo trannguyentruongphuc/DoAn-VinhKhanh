@@ -1,0 +1,17 @@
+{
+  "name": "Phố ẩm thực Vĩnh Khánh",
+  "short_name": "Vĩnh Khánh POI",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#c0392b",
+  "description": "Thuyết minh tự động đa ngôn ngữ phố ẩm thực Vĩnh Khánh",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
