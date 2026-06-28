@@ -118,31 +118,6 @@
       background: #fafafa;
     }
 
-    .audio-tag {
-      display: inline-block;
-      background: #eef;
-      color: #334;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 0.75rem;
-      margin-right: 4px;
-    }
-
-    .audio-remove-btn {
-      background: none;
-      border: none;
-      color: #966;
-      cursor: pointer;
-      font-size: 0.85rem;
-      line-height: 1;
-      margin-left: 4px;
-      padding: 0;
-    }
-
-    .audio-remove-btn:hover {
-      color: #c0392b;
-    }
-
     form {
       display: flex;
       flex-wrap: wrap;
@@ -259,7 +234,12 @@
     <div class="login-box">
       <h2>Yêu cầu đăng nhập</h2>
       <p>Chỉ quản trị viên mới được truy cập trang này</p>
-      <a href="/index.html" class="btn">Đăng nhập Admin</a>
+      <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+        <input type="text" id="admin-username" placeholder="Tên đăng nhập" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+        <input type="password" id="admin-password" placeholder="Mật khẩu" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+        <button type="submit" class="btn" style="width:100%;">Đăng nhập</button>
+      </form>
+      <p id="login-error" style="color:red;margin-top:10px;display:none;"></p>
     </div>
   </div>
 
@@ -288,7 +268,6 @@
             <th>Tọa độ</th>
             <th>Bán kính</th>
             <th>Priority</th>
-            <th>Audio đã gán</th>
             <th></th>
           </tr>
         </thead>
@@ -329,36 +308,6 @@
       </form>
     </section>
 
-    <!-- ============ 3. FORM GÁN AUDIO ĐA NGÔN NGỮ CHO POI ============ -->
-    <section>
-      <h2>3. Gán Audio (theo ngôn ngữ) cho một điểm</h2>
-      <form id="audio-form">
-        <div class="field">
-          <label>POI</label>
-          <select id="audio-poi-id" required></select>
-        </div>
-        <div class="field">
-          <label>Ngôn ngữ</label>
-          <select id="audio-lang">
-            <option value="vi">vi - Tiếng Việt</option>
-            <option value="en">en - English</option>
-            <option value="ko">ko - 한국어</option>
-            <option value="zh">zh - 中文</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex:2">
-          <label>Link Audio (mp3 / Drive)</label>
-          <input type="text" id="audio-url" placeholder="/audio/poi1_en.mp3">
-        </div>
-        <div class="form-group" style="flex:2">
-          <label>Nội dung transcript</label>
-          <textarea id="audio-transcript" rows="3" placeholder="Nhập bản dịch hoặc nội dung thuyết minh ở đây..."></textarea>
-        </div>
-      </div>
-      <button type="submit" class="btn">Gán / Cập nhật Audio</button>
-      </form>
-    </section>
-
     <!-- ============ 4. ANALYTICS (Người-B hoàn thiện với Chart.js) ============ -->
     <section id="chart-section">
       <h2>4. Thống kê: Top 5 địa điểm có lượt nghe nhiều nhất</h2>
@@ -381,12 +330,68 @@
             <th>Loại tài khoản</th>
             <th>Tên Quán (Vendor)</th>
             <th>Ngày tạo</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
           <!-- Dữ liệu User sẽ được tải bằng JS -->
         </tbody>
       </table>
+
+      <!-- Form tạo Vendor mới -->
+      <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <h3 style="margin: 0 0 12px; font-size: 1rem; color: var(--primary-dark);">Tạo tài khoản Vendor mới</h3>
+        <form id="create-vendor-form" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+          <div class="field">
+            <label>Tên đăng nhập</label>
+            <input type="text" id="new-vendor-username" required>
+          </div>
+          <div class="field">
+            <label>Mật khẩu</label>
+            <input type="password" id="new-vendor-password" required minlength="6">
+          </div>
+          <div class="field">
+            <label>Tên cửa hàng</label>
+            <input type="text" id="new-vendor-storename" required>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="new-vendor-email">
+          </div>
+          <button type="submit" class="btn">Tạo Vendor</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ 6. GIÁM SÁT HỆ THỐNG ============ -->
+    <section>
+      <h2>6. Giám sát hệ thống</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #2e7d32;" id="stat-pois">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Tổng POIs</div>
+        </div>
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #1565c0;" id="stat-vendors">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Vendors</div>
+        </div>
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #e65100;" id="stat-listens">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Tổng lượt nghe</div>
+        </div>
+        <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #c2185b;" id="stat-users">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Khách hàng</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <h3 style="font-size: 1rem; margin-bottom: 10px;">Hoạt động gần đây</h3>
+        <div id="activity-log" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
+          <p style="color: var(--muted);">Đang tải...</p>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -431,16 +436,67 @@
       window.location.href = '/index.html';
     }
 
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('admin-username').value.trim();
+      const password = document.getElementById('admin-password').value;
+      const errorMsg = document.getElementById('login-error');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          document.getElementById('login-overlay').classList.remove('active');
+          document.querySelector('main').style.display = 'block';
+          document.getElementById('user-info').style.display = 'flex';
+          document.getElementById('username-display').textContent = `👤 ${data.user.username} (Admin)`;
+        } else {
+          errorMsg.textContent = data.message || 'Đăng nhập thất bại';
+          errorMsg.style.display = 'block';
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Lỗi kết nối server';
+        errorMsg.style.display = 'block';
+      }
+    }
+
     function getAuthHeaders() {
       const token = localStorage.getItem('token');
       return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
-    // Kiểm tra đăng nhập trước khi load
-    if (!checkAuth()) {
-      // Ẩn main content
-      document.querySelector('main').style.display = 'none';
-    }
+    // Kiểm tra đăng nhập khi DOM ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      const isAuth = checkAuth();
+      if (!isAuth) {
+        document.querySelector('main').style.display = 'none';
+      } else {
+        // Verify token với server (chỉ logout khi 401)
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: getAuthHeaders()
+          });
+          if (res.status === 401) {
+            logout();
+            return;
+          }
+        } catch (e) {
+          // Server có thể đang restart, giữ nguyên localStorage
+        }
+        // Load data sau khi auth thành công
+        loadUsers();
+        loadSystemStats();
+        loadActivityLog();
+      }
+    });
 
     let pois = [];
 
@@ -459,11 +515,17 @@
       fetch(`${API_BASE}/api/POI`)
         .then(res => res.json())
         .then(data => {
-          pois = data; // Lưu vào biến toàn cục để dùng cho form sửa
+          pois = data;
           renderPoiTable(pois);
-          renderPoiSelects(pois);
+          renderPoiSelect(pois);
         })
         .catch(err => console.error("Lỗi tải POI:", err));
+    }
+
+    function renderPoiSelect(pois) {
+      const select = document.getElementById('edit-poi-select');
+      select.innerHTML = '<option value="">-- Chọn POI --</option>' +
+        pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
     }
 
     function renderPoiTable(pois) {
@@ -473,17 +535,12 @@
       pois.forEach(poi => {
         const tr = document.createElement('tr');
 
-        const audioTags = (poi.audios || [])
-          .map(a => `<span class="audio-tag">${a.languageCode}<button class="audio-remove-btn" data-audio-id="${a.id}" title="Xóa audio ${a.languageCode}">×</button></span>`)
-          .join('') || '<span style="color:#aaa">Chưa có audio</span>';
-
         tr.innerHTML = `
         <td>${poi.id}</td>
         <td>${poi.name}</td>
         <td>${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}</td>
         <td>${poi.radius} m</td>
         <td>${poi.priority}</td>
-        <td>${audioTags}</td>
         <td>
         <button class="btn btn-danger" data-id="${poi.id}">Xóa</button>
         <button class="btn" data-edit="${poi.id}">Sửa</button>
@@ -496,12 +553,6 @@
         btn.addEventListener('click', () => deletePoi(btn.dataset.id));
       });
 
-      tbody.querySelectorAll('button[data-audio-id]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          deleteAudio(btn.dataset.audioId);
-        });
-      });
       // === SỬA: Nút "Sửa" trong bảng - điền dữ liệu vào form sửa ===
       tbody.querySelectorAll('button[data-edit]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -522,56 +573,6 @@
         });
       });
     }
-
-    function deleteAudio(audioId) {
-      if (!confirm(`Xóa audio #${audioId}?`)) return;
-      fetch(`${API_BASE}/api/audios/${audioId}`, {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
-      })
-        .then(() => loadPois())
-        .catch(err => console.error("Lỗi xóa Audio:", err));
-    }
-
-    // function renderPoiSelect(pois) {
-    //   const select = document.getElementById('audio-poi-id');
-    //   select.innerHTML = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-    // }
-
-    function renderPoiSelects(pois) {
-      // Dropdown trong form audio
-      const audioSelect = document.getElementById('audio-poi-id');
-      audioSelect.innerHTML = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-
-      // Dropdown trong form sửa (hiển thị tên POI để dễ chọn)
-      const editSelect = document.getElementById('edit-poi-select');
-      editSelect.innerHTML = '<option value="">-- Chọn POI --</option>' +
-        pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-        
-      updateAudioForm();
-    }
-
-    function updateAudioForm() {
-      const audioSelect = document.getElementById('audio-poi-id');
-      const langSelect = document.getElementById('audio-lang');
-      if (!audioSelect.value) return;
-      const pId = parseInt(audioSelect.value);
-      const lCode = langSelect.value;
-      const p = pois.find(x => x.id === pId);
-      if (p && p.audios) {
-        const existing = p.audios.find(a => a.languageCode === lCode);
-        if (existing) {
-          document.getElementById('audio-url').value = existing.audioUrl || '';
-          document.getElementById('audio-transcript').value = existing.transcriptText || '';
-          return;
-        }
-      }
-      document.getElementById('audio-url').value = '';
-      document.getElementById('audio-transcript').value = '';
-    }
-
-    document.getElementById('audio-poi-id').addEventListener('change', updateAudioForm);
-    document.getElementById('audio-lang').addEventListener('change', updateAudioForm);
 
     function deletePoi(id) {
       if (!confirm(`Xóa POI #${id}?`)) return;
@@ -612,32 +613,6 @@
         .catch(err => console.error("Lỗi POST POI:", err));
     });
 
-    // ====== FORM GÁN AUDIO ======
-    document.getElementById('audio-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const newAudio = {
-        poiId: parseInt(document.getElementById('audio-poi-id').value),
-        languageCode: document.getElementById('audio-lang').value,
-        audioUrl: document.getElementById('audio-url').value,
-        transcriptText: document.getElementById('audio-transcript').value
-      };
-
-      fetch(`${API_BASE}/api/audios`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(newAudio)
-      })
-        .then(res => {
-          if (res.ok) {
-            alert("Gán audio thành công!");
-            e.target.reset();
-            loadPois();
-          } else {
-            return res.json().then(data => alert("Lỗi: " + (data.message || "không gán được audio")));
-          }
-        })
-        .catch(err => console.error("Lỗi POST Audio:", err));
-    });
     // Khi chọn POI trong dropdown sửa, điền dữ liệu vào form
     document.getElementById('edit-poi-select').addEventListener('change', (e) => {
       const id = e.target.value;
@@ -795,12 +770,20 @@
       .then(users => {
         const tbody = document.querySelector('#user-table tbody');
         tbody.innerHTML = '';
+        let vendorCount = 0, userCount = 0;
         users.forEach(user => {
           const tr = document.createElement('tr');
           const date = new Date(user.createdAt).toLocaleString('vi-VN');
-          const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>` 
-                          : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>` 
+          const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>`
+                          : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>`
                           : `User`;
+          const isActive = user.isActive !== false;
+          const statusBadge = isActive
+            ? `<span style="color:green">✓ Hoạt động</span>`
+            : `<span style="color:red">✗ Bị khóa</span>`;
+          const actionBtn = user.role !== 'Admin'
+            ? `<button class="btn ${isActive ? 'btn-danger' : ''}" style="padding:4px 8px;font-size:0.8rem;${!isActive ? 'background:#27ae60;' : ''}" onclick="toggleUserStatus(${user.id}, ${!isActive})">${isActive ? 'Khóa' : 'Mở khóa'}</button>`
+            : '-';
           tr.innerHTML = `
             <td>#${user.id}</td>
             <td><strong>${user.username}</strong></td>
@@ -808,20 +791,118 @@
             <td>${roleLabel}</td>
             <td>${user.storeName || '-'}</td>
             <td>${date}</td>
+            <td>${statusBadge}</td>
+            <td>${actionBtn}</td>
           `;
           tbody.appendChild(tr);
+          if (user.role === 'Vendor') vendorCount++;
+          else if (user.role === 'User') userCount++;
         });
+        document.getElementById('stat-vendors').textContent = vendorCount;
+        document.getElementById('stat-users').textContent = userCount;
       })
       .catch(err => {
         const tbody = document.querySelector('#user-table tbody');
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">${err.message}</td></tr>`;
       });
     }
-    
-    // Khởi động load danh sách user khi vào trang
-    if (checkAuth()) {
-      loadUsers();
+
+    // Toggle user active status
+    window.toggleUserStatus = async function(userId, activate) {
+      if (!confirm(activate ? 'Mở khóa tài khoản này?' : 'Khóa tài khoản này?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/user/${userId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify({ isActive: activate })
+        });
+        if (res.ok) {
+          alert(activate ? 'Đã mở khóa!' : 'Đã khóa!');
+          loadUsers();
+        } else {
+          alert('Lỗi khi cập nhật');
+        }
+      } catch (err) {
+        alert('Lỗi: ' + err.message);
+      }
+    };
+
+    // Tạo vendor mới
+    document.getElementById('create-vendor-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        username: document.getElementById('new-vendor-username').value.trim(),
+        password: document.getElementById('new-vendor-password').value,
+        storeName: document.getElementById('new-vendor-storename').value.trim(),
+        email: document.getElementById('new-vendor-email').value.trim(),
+        role: 'Vendor'
+      };
+      if (!data.username || !data.password || !data.storeName) {
+        alert('Vui lòng điền đầy đủ thông tin!');
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          alert('Tạo vendor thành công!');
+          e.target.reset();
+          loadUsers();
+        } else {
+          const err = await res.json();
+          alert(err.message || 'Lỗi khi tạo vendor');
+        }
+      } catch (err) {
+        alert('Lỗi: ' + err.message);
+      }
+    });
+
+    // Load system stats
+    function loadSystemStats() {
+      fetch(`${API_BASE}/api/POI`)
+        .then(res => res.json())
+        .then(pois => {
+          document.getElementById('stat-pois').textContent = pois.length;
+        });
+      fetch(`${API_BASE}/api/listenhistory/stats`, {
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('stat-listens').textContent = data.totalListens || 0;
+        });
     }
+
+    // Load activity log
+    function loadActivityLog() {
+      const logContainer = document.getElementById('activity-log');
+      fetch(`${API_BASE}/api/listenhistory?limit=10`, {
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.length === 0) {
+            logContainer.innerHTML = '<p style="color: var(--muted);">Chưa có hoạt động nào.</p>';
+            return;
+          }
+          logContainer.innerHTML = data.slice(0, 10).map(item => {
+            const time = new Date(item.listenedAt || item.createdAt).toLocaleString('vi-VN');
+            return `<div style="padding:8px 0;border-bottom:1px solid #eee;">
+              <span style="color:#666;font-size:0.8rem;">${time}</span>
+              <span> • </span>
+              <span>POI #${item.poiId}</span>
+              <span style="color:#888;">(${item.language || 'vi'})</span>
+            </div>`;
+          }).join('');
+        })
+        .catch(() => {
+          logContainer.innerHTML = '<p style="color: var(--muted);">Không thể tải log.</p>';
+        });
+    }
+
   </script>
 
 

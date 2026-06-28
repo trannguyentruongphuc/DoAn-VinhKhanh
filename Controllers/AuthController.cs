@@ -67,6 +67,11 @@ namespace TourGuideApp.Controllers
                 return Unauthorized(new { message = "Username hoặc password không đúng" });
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized(new { message = "Tài khoản đã bị khóa. Vui lòng liên hệ Admin." });
+            }
+
             var token = GenerateJwtToken(user);
 
             return Ok(new
@@ -154,11 +159,29 @@ namespace TourGuideApp.Controllers
                     email = u.Email,
                     role = u.Role,
                     storeName = u.StoreName,
-                    createdAt = u.CreatedAt
+                    createdAt = u.CreatedAt,
+                    isActive = u.IsActive
                 })
                 .ToListAsync();
 
             return Ok(users);
+        }
+
+        // PUT /api/auth/user/{id}/status - Khóa/mở khóa tài khoản (Admin)
+        [Authorize(Roles = "Admin")]
+        [HttpPut("user/{id}/status")]
+        public async Task<ActionResult> UpdateUserStatus(int id, [FromBody] UpdateStatusRequest request)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy user" });
+            }
+
+            user.IsActive = request.IsActive;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = user.IsActive ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản" });
         }
 
         private string GenerateJwtToken(User user)
@@ -205,5 +228,10 @@ namespace TourGuideApp.Controllers
     {
         public string? StoreName { get; set; }
         public string? Email { get; set; }
+    }
+
+    public class UpdateStatusRequest
+    {
+        public bool IsActive { get; set; }
     }
 }

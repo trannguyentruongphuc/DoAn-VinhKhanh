@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TourGuideApp.Data;
 using TourGuideApp.Models;
+using TourGuideApp.Services;
 
 namespace TourGuideApp.Controllers
 {
@@ -12,10 +13,12 @@ namespace TourGuideApp.Controllers
     public class POIController : ControllerBase
     {
         private readonly TourGuideContext _context;
+        private readonly AudioService _audioService;
 
-        public POIController(TourGuideContext context)
+        public POIController(TourGuideContext context, AudioService audioService)
         {
             _context = context;
+            _audioService = audioService;
         }
 
         private int? GetCurrentUserId()
@@ -85,10 +88,28 @@ namespace TourGuideApp.Controllers
             _context.POIs.Add(poi);
             await _context.SaveChangesAsync();
 
+            // Tự động tạo audio từ description nếu có
+            if (!string.IsNullOrWhiteSpace(poi.Description))
+            {
+                var audioUrl = await _audioService.GenerateAudioFileAsync(
+                    poi.Description, "vi", poi.Id, "vi"
+                );
+
+                _context.Audios.Add(new Audio
+                {
+                    POIId = poi.Id,
+                    LanguageCode = "vi",
+                    TranscriptText = poi.Description,
+                    AudioUrl = audioUrl ?? string.Empty
+                });
+                await _context.SaveChangesAsync();
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = poi.Id }, poi);
         }
 
         // PUT /api/pois/{id} -> sửa thông tin điểm - ADMIN hoặc VENDOR (chỉ POI của mình)
+        // Tự động regenerate audio nếu description thay đổi
         [Authorize(Roles = "Admin,Vendor")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] POI updated)
@@ -104,12 +125,45 @@ namespace TourGuideApp.Controllers
                 return Forbid();
             }
 
+            var descriptionChanged = poi.Description != updated.Description;
+
             poi.Name = updated.Name;
             poi.Description = updated.Description;
             poi.Lat = updated.Lat;
             poi.Lng = updated.Lng;
             poi.Radius = updated.Radius;
             poi.Priority = updated.Priority;
+
+            // Tự động regenerate audio nếu description thay đổi
+            if (descriptionChanged && !string.IsNullOrWhiteSpace(updated.Description))
+            {
+                // Lấy hoặc tạo audio cho ngôn ngữ mặc định (vi)
+                var audio = await _context.Audios
+                    .FirstOrDefaultAsync(a => a.POIId == id && a.LanguageCode == "vi");
+
+                var newAudioUrl = await _audioService.GenerateAudioFileAsync(
+                    updated.Description, "vi", id, "vi"
+                );
+
+                if (audio != null)
+                {
+                    // Update existing audio
+                    await _audioService.DeleteAudioFileAsync(audio.AudioUrl);
+                    audio.TranscriptText = updated.Description;
+                    audio.AudioUrl = newAudioUrl ?? audio.AudioUrl;
+                }
+                else
+                {
+                    // Tạo audio mới
+                    _context.Audios.Add(new Audio
+                    {
+                        POIId = id,
+                        LanguageCode = "vi",
+                        TranscriptText = updated.Description,
+                        AudioUrl = newAudioUrl ?? string.Empty
+                    });
+                }
+            }
 
             await _context.SaveChangesAsync();
             return NoContent();
