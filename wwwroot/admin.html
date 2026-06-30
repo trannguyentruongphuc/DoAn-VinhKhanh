@@ -1,1087 +1,656 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin - Vĩnh Khánh Tour Guide</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin - Vĩnh Khánh Tour Guide</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<style>
+  :root {
+    --primary: #c0392b;
+    --primary-dark: #962d22;
+    --bg: #f4f7fa;
+    --card-bg: #ffffff;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --sidebar-width: 250px;
+    --header-height: 60px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+  }
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #c0392b;
-      --primary-dark: #962d22;
-      --primary-light: #fdedec;
-      --bg: #f4f7fa;
-      --card-bg: #ffffff;
-      --text: #1f2937;
-      --text-muted: #6b7280;
-      --border: #e5e7eb;
-      --sidebar-width: 250px;
-      --header-height: 60px;
-    }
+  /* Login overlay */
+  #login-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg);
+    display: none; align-items: center; justify-content: center; z-index: 9999;
+  }
+  #login-overlay.active { display: flex; }
+  .login-box {
+    background: var(--card-bg); border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 40px;
+    width: 100%; max-width: 360px; text-align: center;
+  }
+  .login-box h2 { margin: 0 0 8px; color: var(--primary); }
+  .login-box p { color: var(--muted); margin: 0 0 24px; }
+  .login-box input {
+    width: 100%; padding: 12px; margin-bottom: 16px;
+    border: 1px solid var(--border); border-radius: 8px; font-size: 1rem;
+  }
+  .login-box .btn {
+    width: 100%; height: auto; padding: 14px;
+    background: var(--primary); color: #fff; border: none;
+    border-radius: 8px; cursor: pointer; font-size: 1rem;
+  }
+  .login-box .btn:hover { background: var(--primary-dark); }
 
-    * {
-      box-sizing: border-box;
-    }
+  /* Dashboard layout */
+  .dashboard-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-width); background: #111827; color: #f3f4f6;
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 100;
+    padding: 20px 0; display: flex; flex-direction: column;
+  }
+  .sidebar h1 { font-size: 1.25rem; padding: 0 20px 20px; margin: 0; border-bottom: 1px solid #374151; color: #fff; }
+  .sidebar-menu { list-style: none; padding: 20px 0; margin: 0; flex: 1; overflow-y: auto; }
+  .sidebar-menu li a {
+    display: block; padding: 12px 20px; color: #d1d5db;
+    text-decoration: none; font-size: 0.95rem; transition: all 0.2s;
+  }
+  .sidebar-menu li a:hover, .sidebar-menu li a.active {
+    background: #1f2937; color: #fff; border-left: 4px solid var(--primary);
+  }
+  .main-wrapper { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; min-height: 100vh; }
+  header {
+    height: var(--header-height); background: var(--card-bg);
+    padding: 0 30px; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 90; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  header .header-title { font-size: 1.1rem; font-weight: 600; }
+  header .header-actions { display: flex; align-items: center; gap: 16px; }
+  #live-visitors-badge { font-size: 0.85rem; color: var(--text-muted); }
+  #live-visitors-badge span { display: inline-block; vertical-align: middle; }
+  header .logout-btn {
+    background: var(--primary); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.88rem;
+  }
+  header .logout-btn:hover { background: var(--primary-dark); }
 
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0; }
-      100% { opacity: 1; }
-    }
+  /* Content */
+  .content { padding: 24px 30px; flex: 1; }
+  .content h2 { margin-top: 0; font-size: 1.2rem; color: var(--primary-dark); border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+  .card {
+    background: var(--card-bg); border-radius: 10px;
+    padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .card h3 { margin: 0 0 16px; font-size: 1rem; color: var(--primary-dark); }
 
-    body {
-      margin: 0;
-      font-family: "Inter", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      overflow-x: hidden;
-    }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { background: #faf3f2; color: var(--primary-dark); font-weight: 600; }
+  tr:hover { background: #fafafa; }
 
-    .dashboard-layout {
-      display: flex;
-      min-height: 100vh;
-    }
+  .btn {
+    background: var(--primary); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.88rem;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-secondary { background: #6c757d; }
+  .btn-secondary:hover { background: #5a6268; }
+  .btn-danger { background: #c0392b; }
+  .btn-danger:hover { background: #a93226; }
 
-    /* Sidebar */
-    .sidebar {
-      width: var(--sidebar-width);
-      background: #111827;
-      color: #f3f4f6;
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 100;
-      padding: 20px 0;
-      display: flex;
-      flex-direction: column;
-    }
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+  input, select, textarea {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .badge-active { background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem; }
+  .badge-inactive { background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem; }
 
-    .sidebar h1 {
-      font-size: 1.25rem;
-      padding: 0 20px 20px;
-      margin: 0;
-      border-bottom: 1px solid #374151;
-      color: #fff;
-    }
+  #chart-section canvas { max-width: 100%; }
+  #chart-placeholder { color: var(--muted); font-size: 0.85rem; padding: 20px; text-align: center; }
 
-    .sidebar-menu {
-      list-style: none;
-      padding: 20px 0;
-      margin: 0;
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .sidebar-menu li a {
-      display: block;
-      padding: 12px 20px;
-      color: #d1d5db;
-      text-decoration: none;
-      font-size: 0.95rem;
-      transition: all 0.2s;
-    }
-
-    .sidebar-menu li a:hover,
-    .sidebar-menu li a.active {
-      background: #1f2937;
-      color: #fff;
-      border-left: 4px solid var(--primary);
-    }
-
-    /* Main Content */
-    .main-wrapper {
-      flex: 1;
-      margin-left: var(--sidebar-width);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    header {
-      height: var(--header-height);
-      background: var(--card-bg);
-      padding: 0 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 90;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    header .header-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    header .user-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    header .logout-btn {
-      background: #f3f4f6;
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      transition: background 0.2s;
-    }
-
-    header .logout-btn:hover {
-      background: #e5e7eb;
-    }
-
-    main {
-      padding: 30px;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    section {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 30px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    }
-
-    section h2 {
-      margin-top: 0;
-      font-size: 1.25rem;
-      color: var(--text);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-
-    /* Tables */
-    .table-container {
-      overflow-x: auto;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 0.9rem;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      background: #f9fafb;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    tr:hover td {
-      background: #f9fafb;
-    }
-
-    .audio-tag {
-      display: inline-block;
-      background: var(--primary-light);
-      color: var(--primary-dark);
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      margin-right: 4px;
-      margin-bottom: 4px;
-    }
-
-    .audio-remove-btn {
-      background: none;
-      border: none;
-      color: var(--primary);
-      cursor: pointer;
-      font-size: 0.85rem;
-      line-height: 1;
-      margin-left: 6px;
-      padding: 0;
-    }
-
-    /* Forms & Buttons */
-    form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      align-items: flex-end;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    input, select {
-      padding: 10px 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--primary);
-    }
-
-    .btn {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: background 0.2s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn:hover {
-      background: var(--primary-dark);
-    }
-
-    .btn-danger {
-      background: #ef4444;
-    }
-    .btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .btn-success {
-      background: #10b981;
-    }
-    .btn-success:hover {
-      background: #059669;
-    }
-
-    /* Charts */
-    #chart-section canvas {
-      max-width: 100%;
-    }
-    #chart-placeholder {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      text-align: center;
-      padding: 20px;
-    }
-
-    /* Login overlay */
-    #login-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    #login-overlay.active {
-      display: flex;
-    }
-
-    .login-box {
-      background: var(--card-bg);
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-      padding: 40px;
-      width: 100%;
-      max-width: 380px;
-      text-align: center;
-    }
-
-    .login-box h2 {
-      margin: 0 0 10px;
-      color: var(--text);
-      font-size: 1.5rem;
-    }
-
-    .login-box p {
-      color: var(--text-muted);
-      margin: 0 0 30px;
-      font-size: 0.95rem;
-    }
-
-    .login-box .btn {
-      width: 100%;
-      padding: 12px;
-    }
-  </style>
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar h1 { display: none; }
+    .sidebar-menu li a span { display: none; }
+    .main-wrapper { margin-left: 60px; }
+  }
+</style>
 </head>
-
 <body>
 
-  <div id="login-overlay">
-    <div class="login-box">
-      <h2>Yêu cầu đăng nhập</h2>
-      <p>Chỉ quản trị viên mới được truy cập trang này</p>
-      <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
-        <input type="text" id="admin-username" placeholder="Tên đăng nhập" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
-        <input type="password" id="admin-password" placeholder="Mật khẩu" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
-        <button type="submit" class="btn" style="width:100%;">Đăng nhập</button>
-      </form>
-      <p id="login-error" style="color:red;margin-top:10px;display:none;"></p>
-    </div>
+<!-- ==================== LOGIN OVERLAY ==================== -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>Yêu cầu đăng nhập</h2>
+    <p>Chỉ quản trị viên mới được truy cập trang này</p>
+    <form id="admin-login-form">
+      <input type="text" id="admin-username" placeholder="Tên đăng nhập" required>
+      <input type="password" id="admin-password" placeholder="Mật khẩu" required>
+      <button type="submit" class="btn" id="login-btn">Đăng nhập</button>
+    </form>
+    <p id="login-error" style="color:red;margin-top:10px;display:none;"></p>
+    <p style="margin-top:16px;color:var(--muted);font-size:0.82rem;">
+      <a href="/index.html" style="color:var(--primary);">← Quay lại trang chủ</a>
+    </p>
   </div>
+</div>
 
-  <div class="dashboard-layout">
-    <nav class="sidebar">
-      <h1>🛠️ Admin Tour Guide</h1>
-      <ul class="sidebar-menu">
-        <li><a href="#poi-section" class="active">📍 Quản lý POI</a></li>
-        <li><a href="#add-poi-section">➕ Thêm/Sửa POI</a></li>
-        <li><a href="#audio-section">🔊 Gán Audio</a></li>
-        <li><a href="#chart-section">📈 Thống kê</a></li>
-        <li><a href="#users-section">👥 Người dùng</a></li>
-        <li><a href="#reviews-section">💬 Đánh giá</a></li>
-        <li><a href="#approvals-section">📝 Duyệt quyền</a></li>
-      </ul>
-    </nav>
+<!-- ==================== DASHBOARD LAYOUT ==================== -->
+<div class="dashboard-layout">
+  <nav class="sidebar">
+    <h1>🛠️ Admin Panel</h1>
+    <ul class="sidebar-menu">
+      <li><a href="#" class="active" data-section="poi"><span>📍</span> <span>Quản lý POI</span></a></li>
+      <li><a href="#" data-section="users"><span>👥</span> <span>Quản lý Users</span></a></li>
+      <li><a href="#" data-section="reviews"><span>⭐</span> <span>Quản lý Reviews</span></a></li>
+      <li><a href="#" data-section="approvals"><span>✅</span> <span>Duyệt Vendor</span></a></li>
+      <li><a href="#" data-section="analytics"><span>📊</span> <span>Thống kê</span></a></li>
+    </ul>
+  </nav>
 
-    <div class="main-wrapper">
-      <header>
-        <div class="header-title">Trang Quản Trị Hệ Thống</div>
-        <div class="user-info" id="user-info" style="display:none;">
-          <span id="live-visitors-badge"
-            style="background:#f1c40f;color:#333;padding:4px 8px;border-radius:4px;font-weight:bold;font-size:0.9rem;margin-right:15px;display:inline-flex;align-items:center;gap:4px;">
-            <span
-              style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span>
-            Live: 0 thiết bị
-          </span>
-          <span id="username-display"></span>
-          <button class="logout-btn" onclick="logout()">Đăng xuất</button>
-        </div>
-      </header>
+  <div class="main-wrapper">
+    <header>
+      <div class="header-title">TourGuide Admin</div>
+      <div class="header-actions">
+        <span id="live-visitors-badge"></span>
+        <span id="username-display" style="font-size:0.9rem;"></span>
+        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+      </div>
+    </header>
 
-      <main>
-
-        <!-- ============ 1. DANH SÁCH POI + AUDIO ============ -->
-        <section id="poi-section">
-      <h2>1. Danh sách điểm tham quan (POI)</h2>
-      <table id="poi-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Tên</th>
-            <th>Tọa độ</th>
-            <th>Bán kính</th>
-            <th>Priority</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <!-- ============ 2. FORM THÊM POI MỚI ============ -->
-    <section id="add-poi-section">
-      <h2>2. Thêm điểm tham quan mới</h2>
-      <form id="poi-form">
-        <div class="field"><label>Tên</label><input type="text" id="poi-name" required></div>
-        <div class="field"><label>Mô tả</label><input type="text" id="poi-desc"></div>
-        <div class="field"><label>Lat</label><input type="number" step="any" id="poi-lat" required></div>
-        <div class="field"><label>Lng</label><input type="number" step="any" id="poi-lng" required></div>
-        <div class="field"><label>Bán kính (m)</label><input type="number" id="poi-radius" value="100"></div>
-        <div class="field"><label>Priority</label><input type="number" id="poi-priority" value="1"></div>
-        <button type="submit" class="btn">Thêm POI</button>
-      </form>
-    </section>
-
-
-    <section id="edit-poi-section">
-      <h2>2b. Sửa điểm tham quan</h2>
-      <form id="edit-poi-form">
-        <div class="field"><label>POI cần sửa</label>
-          <select id="edit-poi-select">
-            <option value="">-- Chọn POI --</option>
-          </select>
-        </div>
-        <div class="field"><label>Tên mới</label><input type="text" id="edit-name"></div>
-        <div class="field"><label>Mô tả mới</label><input type="text" id="edit-desc"></div>
-        <div class="field"><label>Lat</label><input type="number" step="any" id="edit-lat"></div>
-        <div class="field"><label>Lng</label><input type="number" step="any" id="edit-lng"></div>
-        <div class="field"><label>Bán kính (m)</label><input type="number" id="edit-radius"></div>
-        <div class="field"><label>Priority</label><input type="number" id="edit-priority"></div>
-        <button type="submit" class="btn">Lưu thay đổi</button>
-      </form>
-    </section>
-
-    <!-- ============ 3. FORM GÁN AUDIO ĐA NGÔN NGỮ CHO POI ============ -->
-    <section id="audio-section">
-      <h2>3. Gán Audio (theo ngôn ngữ) cho một điểm</h2>
-      <form id="audio-form">
-        <div class="field">
-          <label>POI</label>
-          <select id="audio-poi-id" required></select>
-        </div>
-        <div class="field">
-          <label>Ngôn ngữ</label>
-          <select id="audio-lang">
-            <option value="vi">vi - Tiếng Việt</option>
-            <option value="en">en - English</option>
-            <option value="ko">ko - 한국어</option>
-            <option value="zh">zh - 中文</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex:2">
-          <label>Link Audio (mp3 / Drive)</label>
-          <input type="text" id="audio-url" placeholder="/audio/poi1_en.mp3">
-        </div>
-        <div class="form-group" style="flex:2">
-          <label>Nội dung transcript</label>
-          <textarea id="audio-transcript" rows="3"
-            placeholder="Nhập bản dịch hoặc nội dung thuyết minh ở đây..."></textarea>
-        </div>
-        <button type="submit" class="btn">Gán / Cập nhật Audio</button>
-      </form>
-    </section>
-
-    <!-- ============ 4. ANALYTICS (Người-B hoàn thiện với Chart.js) ============ -->
-    <section id="chart-section">
-      <h2>4. Thống kê: Top 5 địa điểm có lượt nghe nhiều nhất</h2>
-      <p id="chart-placeholder">
-        TODO (Người-B): nhúng Chart.js (&lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;),
-        gọi GET /api/Analytics/top-pois, rồi vẽ biểu đồ cột vào &lt;canvas id="topPoisChart"&gt;.
-      </p>
-      <canvas id="topPoisChart" height="120"></canvas>
-    </section>
-
-    <!-- ============ 5. QUẢN LÝ NGƯỜI DÙNG ============ -->
-    <section id="users-section">
-      <h2>5. Quản lý Khách hàng & Đối tác</h2>
-      <table id="user-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Tên đăng nhập</th>
-            <th>Email</th>
-            <th>Loại tài khoản</th>
-            <th>Tên Quán (Vendor)</th>
-            <th>Ngày tạo</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Dữ liệu User sẽ được tải bằng JS -->
-        </tbody>
-      </table>
-
-      <!-- Form tạo Vendor mới -->
-      <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-        <h3 style="margin: 0 0 12px; font-size: 1rem; color: var(--primary-dark);">Tạo tài khoản Vendor mới</h3>
-        <form id="create-vendor-form" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
-          <div class="field">
-            <label>Tên đăng nhập</label>
-            <input type="text" id="new-vendor-username" required>
-          </div>
-          <div class="field">
-            <label>Mật khẩu</label>
-            <input type="password" id="new-vendor-password" required minlength="6">
-          </div>
-          <div class="field">
-            <label>Tên cửa hàng</label>
-            <input type="text" id="new-vendor-storename" required>
-          </div>
-          <div class="field">
-            <label>Email</label>
-            <input type="email" id="new-vendor-email">
-          </div>
-          <button type="submit" class="btn">Tạo Vendor</button>
+    <div class="content">
+      <!-- ==================== 1. POI MANAGEMENT ==================== -->
+      <section id="section-poi" class="card">
+        <h3>1. Quản lý điểm tham quan (POI)</h3>
+        <form id="poi-form" style="margin-bottom:16px;">
+          <div class="field"><label>Tên</label><input type="text" id="poi-name" required></div>
+          <div class="field"><label>Mô tả</label><input type="text" id="poi-desc"></div>
+          <div class="field"><label>Lat</label><input type="number" step="any" id="poi-lat" required></div>
+          <div class="field"><label>Lng</label><input type="number" step="any" id="poi-lng" required></div>
+          <div class="field"><label>Bán kính</label><input type="number" id="poi-radius" value="100"></div>
+          <div class="field"><label>Priority</label><input type="number" id="poi-priority" value="1"></div>
+          <button type="submit" class="btn">Thêm POI</button>
         </form>
-      </div>
-    </section>
 
-    <!-- ============ 6. GIÁM SÁT HỆ THỐNG ============ -->
-    <section>
-      <h2>6. Giám sát hệ thống</h2>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 2rem; font-weight: bold; color: #2e7d32;" id="stat-pois">0</div>
-          <div style="font-size: 0.85rem; color: #666;">Tổng POIs</div>
+        <form id="edit-poi-form" style="margin-bottom:16px; background:#f8f9fa; padding:12px; border-radius:8px;">
+          <div class="field"><label>Sửa POI</label>
+            <select id="edit-poi-select"><option value="">-- Chọn POI --</option></select>
+          </div>
+          <div class="field"><label>Tên mới</label><input type="text" id="edit-name"></div>
+          <div class="field"><label>Mô tả</label><input type="text" id="edit-desc"></div>
+          <div class="field"><label>Lat</label><input type="number" step="any" id="edit-lat"></div>
+          <div class="field"><label>Lng</label><input type="number" step="any" id="edit-lng"></div>
+          <div class="field"><label>Bán kính</label><input type="number" id="edit-radius"></div>
+          <div class="field"><label>Priority</label><input type="number" id="edit-priority"></div>
+          <button type="submit" class="btn btn-secondary">Lưu</button>
+        </form>
+
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Tên</th><th>Tọa độ</th><th>Bán kính</th><th>Audio</th><th>Thao tác</th></tr>
+          </thead>
+          <tbody id="poi-tbody"></tbody>
+        </table>
+      </section>
+
+      <!-- ==================== 1b. LOCALIZATION ==================== -->
+      <section id="section-localization" class="card">
+        <h3>1b. Bản dịch đa ngôn ngữ (Tên + Mô tả)</h3>
+        <form id="loc-form" style="margin-bottom:12px; background:#f8f9fa; padding:12px; border-radius:8px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="field">
+              <label>POI</label>
+              <select id="loc-poi-select"><option value="">-- Chọn POI --</option></select>
+            </div>
+            <div class="field">
+              <label>Ngôn ngữ</label>
+              <select id="loc-lang-select">
+                <option value="en">🇺🇸 English</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="zh">🇨🇳 中文</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:10px;">
+            <label>Tên đã dịch</label>
+            <input type="text" id="loc-name-input" placeholder="Nhập tên bản địa hóa..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;">
+          </div>
+          <div class="field" style="margin-top:10px;">
+            <label>Mô tả đã dịch</label>
+            <textarea id="loc-desc-input" rows="3" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;" placeholder="Nhập mô tả bản địa hóa..."></textarea>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;">
+            <button type="submit" class="btn">💾 Lưu bản dịch</button>
+            <button type="button" class="btn btn-secondary" onclick="deleteLocalization()">🗑️ Xóa bản dịch</button>
+          </div>
+        </form>
+        <div id="loc-status" style="margin-top:8px;font-size:0.85rem;"></div>
+        <div id="loc-list" style="margin-top:12px;font-size:0.85rem;"></div>
+      </section>
+
+      <!-- ==================== 2. AUDIO MANAGEMENT ==================== -->
+      <section id="section-audio" class="card">
+        <h3>2. Gán Audio đa ngôn ngữ</h3>
+        <form id="audio-form">
+          <div class="field"><label>POI</label>
+            <select id="audio-poi-id" required></select>
+          </div>
+          <div class="field"><label>Ngôn ngữ</label>
+            <select id="audio-lang">
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+          <div class="field"><label>Link Audio</label>
+            <input type="text" id="audio-url" placeholder="/audio/poi1.mp3" required>
+          </div>
+          <div class="field" style="flex:2;"><label>Nội dung thuyết minh</label>
+            <textarea id="audio-transcript" placeholder="Nhập nội dung thuyết minh..."></textarea>
+          </div>
+          <button type="submit" class="btn">Gán Audio</button>
+        </form>
+      </section>
+
+      <!-- ==================== 3. USER MANAGEMENT ==================== -->
+      <section id="section-users" class="card" style="display:none;">
+        <h3>3. Quản lý người dùng</h3>
+        <div style="margin-bottom:16px; padding:12px; background:#f8f9fa; border-radius:8px;">
+          <h4 style="margin:0 0 10px; font-size:0.95rem;">Tạo tài khoản Vendor mới</h4>
+          <form id="create-vendor-form" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;">
+            <div class="field"><label>Username</label><input type="text" id="new-vendor-username" required></div>
+            <div class="field"><label>Mật khẩu</label><input type="password" id="new-vendor-password" required minlength="6"></div>
+            <div class="field"><label>Tên cửa hàng</label><input type="text" id="new-vendor-storename" required></div>
+            <div class="field"><label>Email</label><input type="email" id="new-vendor-email"></div>
+            <button type="submit" class="btn">Tạo Vendor</button>
+          </form>
         </div>
-        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 2rem; font-weight: bold; color: #1565c0;" id="stat-vendors">0</div>
-          <div style="font-size: 0.85rem; color: #666;">Vendors</div>
-        </div>
-        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 2rem; font-weight: bold; color: #e65100;" id="stat-listens">0</div>
-          <div style="font-size: 0.85rem; color: #666;">Tổng lượt nghe</div>
-        </div>
-        <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 2rem; font-weight: bold; color: #c2185b;" id="stat-users">0</div>
-          <div style="font-size: 0.85rem; color: #666;">Khách hàng</div>
-        </div>
-      </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Cửa hàng</th><th>Ngày tạo</th><th>Trạng thái</th><th>Thao tác</th></tr>
+          </thead>
+          <tbody id="user-table"></tbody>
+        </table>
+      </section>
 
-      <div style="margin-top: 15px;">
-        <h3 style="font-size: 1rem; margin-bottom: 10px;">Hoạt động gần đây</h3>
-        <div id="activity-log" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
-          <p style="color: var(--muted);">Đang tải...</p>
-        </div>
-      </div>
-    </section>
+      <!-- ==================== 4. REVIEWS ==================== -->
+      <section id="section-reviews" class="card" style="display:none;">
+        <h3>4. Quản lý đánh giá</h3>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>User</th><th>POI</th><th>Sao</th><th>Bình luận</th><th>Ngày</th><th></th></tr>
+          </thead>
+          <tbody id="review-table"></tbody>
+        </table>
+      </section>
 
-    <!-- ============ 6. QUẢN LÝ ĐÁNH GIÁ (REVIEWS) ============ -->
-    <section id="reviews-section">
-      <h2>6. Quản lý Đánh giá (Reviews)</h2>
-      <table id="review-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Tài khoản</th>
-            <th>Địa điểm (POI)</th>
-            <th>Số sao</th>
-            <th>Bình luận</th>
-            <th>Ngày tạo</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Dữ liệu Review sẽ được tải bằng JS -->
-        </tbody>
-      </table>
-    </section>
+      <!-- ==================== 5. APPROVALS ==================== -->
+      <section id="section-approvals" class="card" style="display:none;">
+        <h3>5. Duyệt đăng ký Vendor</h3>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>User</th><th>Tên cửa hàng</th><th>Địa chỉ</th><th>Trạng thái</th><th></th></tr>
+          </thead>
+          <tbody id="approval-table"></tbody>
+        </table>
+      </section>
 
-    <!-- ============ 7. QUẢN LÝ DUYỆT QUYỀN (APPROVALS) ============ -->
-    <section id="approvals-section">
-      <h2>7. Duyệt quyền Chủ quán (Vendor)</h2>
-      <table id="approval-table">
-        <thead>
-          <tr>
-            <th>ID Yêu cầu</th>
-            <th>Tài khoản</th>
-            <th>Tên cửa hàng</th>
-            <th>Địa chỉ</th>
-            <th>Trạng thái</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Dữ liệu Approval sẽ được tải bằng JS -->
-        </tbody>
-      </table>
-    </section>
-      </main>
-    </div>
-  </div>
+      <!-- ==================== 6. ANALYTICS ==================== -->
+      <section id="section-analytics" class="card" style="display:none;">
+        <h3>6. Thống kê lượt nghe</h3>
+        <p id="chart-placeholder">Đang tải dữ liệu thống kê...</p>
+        <canvas id="topPoisChart" height="120"></canvas>
+        <div id="activity-log" style="margin-top:20px;"></div>
+      </section>
+    </div><!-- end .content -->
+  </div><!-- end .main-wrapper -->
+</div><!-- end .dashboard-layout -->
 
-  <script>
-    // Tự nhận diện địa chỉ server dựa theo hostname đang mở trang web.
-    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' : `${window.location.protocol}//${window.location.hostname}:5555`;
+<script>
+const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' : `${window.location.protocol}//${window.location.hostname}:5555`;
 
-    // ====== KIỂM TRA ĐĂNG NHẬP ======
-    function checkAuth() {
-      // Lấy tên admin để hiển thị
-      document.addEventListener('DOMContentLoaded', () => {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          try {
-            const userObj = JSON.parse(userStr);
-            document.getElementById('username-display').innerText = userObj.username;
-          } catch (e) { }
-        }
-        
-        // Sidebar scroll spy
-        const sections = document.querySelectorAll('section');
-        const navLinks = document.querySelectorAll('.sidebar-menu a');
+// ====== HELPERS ======
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
 
-        window.addEventListener('scroll', () => {
-          let current = '';
-          sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            if (pageYOffset >= sectionTop - 100) {
-              current = section.getAttribute('id');
-            }
-          });
-
-          navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === `#${current}`) {
-              link.classList.add('active');
-            }
-          });
-        });
-        
-        // Smooth scrolling cho sidebar links
-        navLinks.forEach(link => {
-          link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href').substring(1);
-            const targetSection = document.getElementById(targetId);
-            if (targetSection) {
-              window.scrollTo({
-                top: targetSection.offsetTop - 80,
-                behavior: 'smooth'
-              });
-            }
-          });
-        });
-      });
-
-      const token = localStorage.getItem('token');
-      const user = localStorage.getItem('user');
-
-      if (!token || !user) {
-        document.getElementById('login-overlay').classList.add('active');
-        return false;
-      }
-
-      try {
-        const userData = JSON.parse(user);
-
-        // Chỉ cho Admin vào trang này
-        if (userData.role !== 'Admin') {
-          alert('Bạn không có quyền truy cập trang Admin!');
-          logout();
-          return false;
-        }
-
-        document.getElementById('username-display').textContent = `👤 ${userData.username} (Admin)`;
-        document.getElementById('user-info').style.display = 'flex';
-        return true;
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        document.getElementById('login-overlay').classList.add('active');
-        return false;
-      }
+// ====== CHECK AUTH ======
+function checkAuth() {
+  const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user');
+  if (!token || !user) {
+    document.getElementById('login-overlay').classList.add('active');
+    return false;
+  }
+  try {
+    const userData = JSON.parse(user);
+    if (userData.role !== 'Admin') {
+      alert('Bạn không có quyền truy cập trang Admin!');
+      logout();
+      return false;
     }
+    document.getElementById('username-display').textContent = `👤 ${userData.username} (Admin)`;
+    return true;
+  } catch (e) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    document.getElementById('login-overlay').classList.add('active');
+    return false;
+  }
+}
 
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/index.html';
-    }
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/index.html';
+}
 
-    async function handleAdminLogin(e) {
-      e.preventDefault();
-      const username = document.getElementById('admin-username').value.trim();
-      const password = document.getElementById('admin-password').value;
-      const errorMsg = document.getElementById('login-error');
+// ====== HANDLE LOGIN ======
+document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('admin-username').value.trim();
+  const password = document.getElementById('admin-password').value;
+  const errorMsg = document.getElementById('login-error');
 
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          document.getElementById('login-overlay').classList.remove('active');
-          document.querySelector('main').style.display = 'block';
-          document.getElementById('user-info').style.display = 'flex';
-          document.getElementById('username-display').textContent = `👤 ${data.user.username} (Admin)`;
-        } else {
-          errorMsg.textContent = data.message || 'Đăng nhập thất bại';
-          errorMsg.style.display = 'block';
-        }
-      } catch (err) {
-        errorMsg.textContent = 'Lỗi kết nối server';
-        errorMsg.style.display = 'block';
-      }
-    }
-
-    function getAuthHeaders() {
-      const token = localStorage.getItem('token');
-      return token ? { 'Authorization': `Bearer ${token}` } : {};
-    }
-
-    // Kiểm tra đăng nhập khi DOM ready
-    document.addEventListener('DOMContentLoaded', async () => {
-      const isAuth = checkAuth();
-      if (!isAuth) {
-        document.querySelector('main').style.display = 'none';
-      } else {
-        // Verify token với server (chỉ logout khi 401)
-        try {
-          const res = await fetch(`${API_BASE}/api/auth/me`, {
-            headers: getAuthHeaders()
-          });
-          if (res.status === 401) {
-            logout();
-            return;
-          }
-        } catch (e) {
-          // Server có thể đang restart, giữ nguyên localStorage
-        }
-        // Load data sau khi auth thành công
-        loadUsers();
-        loadSystemStats();
-        loadActivityLog();
-      }
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
     });
-
-    let pois = [];
-
-    // ====== TẢI DANH SÁCH POI + AUDIO ======
-    // function loadPois() {
-    //   fetch(`${API_BASE}/api/POI`)
-    //     .then(res => res.json())
-    //     .then(pois => {
-    //       renderPoiTable(pois);
-    //       renderPoiSelect(pois);
-    //     })
-    //     .catch(err => console.error("Lỗi tải POI:", err));
-    // }
-
-    function loadPois() {
-      fetch(`${API_BASE}/api/POI`)
-        .then(res => res.json())
-        .then(data => {
-          pois = data;
-          renderPoiTable(pois);
-          renderPoiSelect(pois);
-        })
-        .catch(err => console.error("Lỗi tải POI:", err));
+    const data = await res.json();
+    if (res.ok && data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      document.getElementById('login-overlay').classList.remove('active');
+      document.getElementById('username-display').textContent = `👤 ${data.user.username} (Admin)`;
+      initDashboard();
+    } else {
+      errorMsg.textContent = data.message || 'Đăng nhập thất bại';
+      errorMsg.style.display = 'block';
     }
+  } catch (err) {
+    errorMsg.textContent = 'Lỗi kết nối server';
+    errorMsg.style.display = 'block';
+  }
+});
 
-    function renderPoiSelect(pois) {
-      const select = document.getElementById('edit-poi-select');
-      select.innerHTML = '<option value="">-- Chọn POI --</option>' +
-        pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-    }
+// ====== SIDEBAR NAVIGATION ======
+document.querySelectorAll('.sidebar-menu a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const section = link.getAttribute('data-section');
+    document.querySelectorAll('.sidebar-menu a').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    document.querySelectorAll('.card').forEach(c => c.style.display = 'none');
+    document.getElementById(`section-${section}`).style.display = 'block';
+  });
+});
 
-    function renderPoiTable(pois) {
-      const tbody = document.querySelector('#poi-table tbody');
-      tbody.innerHTML = '';
+// ====== POI MANAGEMENT ======
+let pois = [];
 
-      pois.forEach(poi => {
-        const tr = document.createElement('tr');
+function loadPois() {
+  fetch(`${API_BASE}/api/POI`)
+    .then(res => res.json())
+    .then(data => {
+      pois = data;
+      renderPoiTable(pois);
+      renderPoiSelects(pois);
+      populateLocPoiSelect(pois);
+    })
+    .catch(err => console.error("Lỗi tải POI:", err));
+}
 
-        tr.innerHTML = `
-        <td>${poi.id}</td>
+function renderPoiTable(pois) {
+  const tbody = document.getElementById('poi-tbody');
+  tbody.innerHTML = '';
+  pois.forEach(poi => {
+    const audioTags = (poi.audios || []).map(a =>
+      `<span class="badge-active">${a.languageCode}</span>`
+    ).join('') || '<span style="color:#aaa">—</span>';
+    tbody.innerHTML += `
+      <tr>
+        <td>#${poi.id}</td>
         <td>${poi.name}</td>
         <td>${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}</td>
-        <td>${poi.radius} m</td>
-        <td>${poi.priority}</td>
+        <td>${poi.radius}m</td>
+        <td>${audioTags}</td>
         <td>
-        <button class="btn btn-danger" data-id="${poi.id}">Xóa</button>
-        <button class="btn" data-edit="${poi.id}">Sửa</button>
+          <button class="btn btn-danger" onclick="deletePoi(${poi.id})">Xóa</button>
         </td>
-      `;
-        tbody.appendChild(tr);
-      });
+      </tr>
+    `;
+  });
+}
 
-      tbody.querySelectorAll('button[data-id]').forEach(btn => {
-        btn.addEventListener('click', () => deletePoi(btn.dataset.id));
-      });
+function renderPoiSelects(pois) {
+  const opts = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
+  document.getElementById('audio-poi-id').innerHTML = opts;
+  document.getElementById('edit-poi-select').innerHTML = '<option value="">-- Chọn POI --</option>' + opts;
+}
 
-      // === SỬA: Nút "Sửa" trong bảng - điền dữ liệu vào form sửa ===
-      tbody.querySelectorAll('button[data-edit]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const poiId = btn.dataset.edit;
-          // Điền dữ liệu vào form sửa section 2b
-          document.getElementById('edit-poi-select').value = poiId;
-          const poi = pois.find(p => p.id == poiId);
-          if (poi) {
-            document.getElementById('edit-name').value = poi.name || '';
-            document.getElementById('edit-desc').value = poi.description || '';
-            document.getElementById('edit-lat').value = poi.lat;
-            document.getElementById('edit-lng').value = poi.lng;
-            document.getElementById('edit-radius').value = poi.radius || 100;
-            document.getElementById('edit-priority').value = poi.priority || 1;
-          }
-          // Scroll đến form sửa
-          document.getElementById('edit-poi-form').scrollIntoView({ behavior: 'smooth' });
+function deletePoi(id) {
+  if (!confirm(`Xóa POI #${id}?`)) return;
+  fetch(`${API_BASE}/api/POI/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
+    .then(() => loadPois())
+    .catch(err => console.error("Lỗi xóa POI:", err));
+}
+
+// Add POI form
+document.getElementById('poi-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const newPoi = {
+    name: document.getElementById('poi-name').value,
+    description: document.getElementById('poi-desc').value,
+    lat: parseFloat(document.getElementById('poi-lat').value),
+    lng: parseFloat(document.getElementById('poi-lng').value),
+    radius: parseFloat(document.getElementById('poi-radius').value) || 100,
+    priority: parseInt(document.getElementById('poi-priority').value) || 1
+  };
+  fetch(`${API_BASE}/api/POI`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(newPoi)
+  })
+    .then(res => { if (res.ok) { alert("Thêm POI thành công!"); e.target.reset(); loadPois(); } else alert("Lỗi khi thêm POI."); })
+    .catch(err => console.error("Lỗi POST POI:", err));
+});
+
+// Edit POI form
+document.getElementById('edit-poi-select').addEventListener('change', (e) => {
+  const id = e.target.value;
+  if (!id) return;
+  const poi = pois.find(p => p.id == id);
+  if (poi) {
+    document.getElementById('edit-name').value = poi.name || '';
+    document.getElementById('edit-desc').value = poi.description || '';
+    document.getElementById('edit-lat').value = poi.lat;
+    document.getElementById('edit-lng').value = poi.lng;
+    document.getElementById('edit-radius').value = poi.radius || 100;
+    document.getElementById('edit-priority').value = poi.priority || 1;
+  }
+});
+
+document.getElementById('edit-poi-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const id = document.getElementById('edit-poi-select').value;
+  if (!id) { alert('Chọn POI cần sửa'); return; }
+  const updated = {
+    name: document.getElementById('edit-name').value,
+    description: document.getElementById('edit-desc').value,
+    lat: parseFloat(document.getElementById('edit-lat').value),
+    lng: parseFloat(document.getElementById('edit-lng').value),
+    radius: parseFloat(document.getElementById('edit-radius').value) || 100,
+    priority: parseInt(document.getElementById('edit-priority').value) || 1
+  };
+  fetch(`${API_BASE}/api/POI/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(updated)
+  })
+    .then(res => { if (res.ok) { alert('Sửa thành công!'); loadPois(); } else alert('Lỗi sửa POI'); })
+    .catch(err => console.error("Lỗi PUT POI:", err));
+});
+
+// ====== LOCALIZATION MANAGEMENT ======
+let allAdminPois = []; // Shared POI data for localization
+
+function populateLocPoiSelect(pois) {
+  const sel = document.getElementById('loc-poi-select');
+  sel.innerHTML = '<option value="">-- Chọn POI --</option>' +
+    pois.map(p => `<option value="${p.id}">#${p.id} – ${p.name}</option>`).join('');
+  allAdminPois = pois;
+}
+
+function loadLocList() {
+  const poiId = parseInt(document.getElementById('loc-poi-select').value);
+  const container = document.getElementById('loc-list');
+  if (!poiId) { container.innerHTML = ''; return; }
+  const poi = allAdminPois.find(p => p.id === poiId);
+  if (!poi) return;
+  const locs = poi.localizations || [];
+  if (locs.length === 0) {
+    container.innerHTML = '<span style="color:#999">Chưa có bản dịch nào cho POI này.</span>';
+    return;
+  }
+  const LANG_LABELS = { en: '🇺🇸 English', ko: '🇰🇷 한국어', zh: '🇨🇳 中文', vi: '🇻🇳 Tiếng Việt' };
+  container.innerHTML = '<table style="width:100%;border-collapse:collapse;"><thead><tr><th>Ngôn ngữ</th><th>Tên</th><th>Mô tả</th></tr></thead><tbody>' +
+    locs.map(l => `<tr style="border-bottom:1px solid #eee;">
+      <td style="padding:4px 6px;">${LANG_LABELS[l.languageCode] || l.languageCode}</td>
+      <td style="padding:4px 6px;">${l.translatedName || '–'}</td>
+      <td style="padding:4px 6px;font-size:0.8rem;color:#666;">${(l.translatedDescription || '').substring(0, 80)}…</td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+document.getElementById('loc-poi-select').addEventListener('change', (e) => {
+  loadLocList();
+  document.getElementById('loc-name-input').value = '';
+  document.getElementById('loc-desc-input').value = '';
+  document.getElementById('loc-status').textContent = '';
+
+  const poiId = parseInt(e.target.value);
+  const lang = document.getElementById('loc-lang-select').value;
+  if (!poiId) return;
+
+  const poi = allAdminPois.find(p => p.id === poiId);
+  if (!poi) return;
+  const loc = (poi.localizations || []).find(l => l.languageCode === lang);
+  if (loc) {
+    document.getElementById('loc-name-input').value = loc.translatedName || '';
+    document.getElementById('loc-desc-input').value = loc.translatedDescription || '';
+  }
+});
+
+document.getElementById('loc-lang-select').addEventListener('change', () => {
+  document.getElementById('loc-poi-select').dispatchEvent(new Event('change'));
+});
+
+document.getElementById('loc-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const poiId = parseInt(document.getElementById('loc-poi-select').value);
+  const lang = document.getElementById('loc-lang-select').value;
+  const name = document.getElementById('loc-name-input').value.trim();
+  const desc = document.getElementById('loc-desc-input').value.trim();
+  if (!poiId) { document.getElementById('loc-status').textContent = '⚠️ Vui lòng chọn POI.'; return; }
+
+  fetch(`${API_BASE}/api/POI/${poiId}/localization`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ languageCode: lang, translatedName: name, translatedDescription: desc })
+  })
+    .then(res => {
+      if (res.ok) {
+        document.getElementById('loc-status').textContent = '✅ Đã lưu bản dịch!';
+        document.getElementById('loc-status').style.color = 'green';
+        loadPois();
+      } else {
+        res.json().then(d => {
+          document.getElementById('loc-status').textContent = '❌ Lỗi: ' + (d.message || 'không rõ lỗi');
         });
-      });
-    }
-
-    function deleteAudio(audioId) {
-      if (!confirm(`Xóa audio #${audioId}?`)) return;
-      fetch(`${API_BASE}/api/audios/${audioId}`, {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
-      })
-        .then(() => loadPois())
-        .catch(err => console.error("Lỗi xóa Audio:", err));
-    }
-
-    // function renderPoiSelect(pois) {
-    //   const select = document.getElementById('audio-poi-id');
-    //   select.innerHTML = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-    // }
-
-    function renderPoiSelects(pois) {
-      // Dropdown trong form audio
-      const audioSelect = document.getElementById('audio-poi-id');
-      audioSelect.innerHTML = pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-
-      // Dropdown trong form sửa (hiển thị tên POI để dễ chọn)
-      const editSelect = document.getElementById('edit-poi-select');
-      editSelect.innerHTML = '<option value="">-- Chọn POI --</option>' +
-        pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-
-      updateAudioForm();
-    }
-
-    function updateAudioForm() {
-      const audioSelect = document.getElementById('audio-poi-id');
-      const langSelect = document.getElementById('audio-lang');
-      if (!audioSelect.value) return;
-      const pId = parseInt(audioSelect.value);
-      const lCode = langSelect.value;
-      const p = pois.find(x => x.id === pId);
-      if (p && p.audios) {
-        const existing = p.audios.find(a => a.languageCode === lCode);
-        if (existing) {
-          document.getElementById('audio-url').value = existing.audioUrl || '';
-          document.getElementById('audio-transcript').value = existing.transcriptText || '';
-          return;
-        }
       }
-      document.getElementById('audio-url').value = '';
-      document.getElementById('audio-transcript').value = '';
-    }
+    })
+    .catch(err => { console.error(err); document.getElementById('loc-status').textContent = '❌ Lỗi kết nối.'; });
+});
 
-    document.getElementById('audio-poi-id').addEventListener('change', updateAudioForm);
-    document.getElementById('audio-lang').addEventListener('change', updateAudioForm);
-
-    function deletePoi(id) {
-      if (!confirm(`Xóa POI #${id}?`)) return;
-      fetch(`${API_BASE}/api/POI/${id}`, {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
-      })
-        .then(() => loadPois())
-        .catch(err => console.error("Lỗi xóa POI:", err));
-    }
-
-    // ====== FORM THÊM POI ======
-    document.getElementById('poi-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const newPoi = {
-        name: document.getElementById('poi-name').value,
-        description: document.getElementById('poi-desc').value,
-        lat: parseFloat(document.getElementById('poi-lat').value),
-        lng: parseFloat(document.getElementById('poi-lng').value),
-        radius: parseFloat(document.getElementById('poi-radius').value) || 100,
-        priority: parseInt(document.getElementById('poi-priority').value) || 1
-      };
-
-      fetch(`${API_BASE}/api/POI`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(newPoi)
-      })
-        .then(res => {
-          if (res.ok) {
-            alert("Thêm POI thành công!");
-            e.target.reset();
-            loadPois();
-          } else {
-            alert("Lỗi khi thêm POI.");
-          }
-        })
-        .catch(err => console.error("Lỗi POST POI:", err));
-    });
-
-    // Khi chọn POI trong dropdown sửa, điền dữ liệu vào form
-    document.getElementById('edit-poi-select').addEventListener('change', (e) => {
-      const id = e.target.value;
-      if (!id) return;
-      const poi = pois.find(p => p.id == id);
-      if (poi) {
-        // document.getElementById('edit-name').value = poi.name;
-        document.getElementById('edit-name').value = poi.name || '';
-        document.getElementById('edit-desc').value = poi.description || '';
-        document.getElementById('edit-lat').value = poi.lat;
-        document.getElementById('edit-lng').value = poi.lng;
-        // document.getElementById('edit-radius').value = poi.radius;
-        // document.getElementById('edit-priority').value = poi.priority;
-        document.getElementById('edit-radius').value = poi.radius || 100;
-        document.getElementById('edit-priority').value = poi.priority || 1;
+function deleteLocalization() {
+  const poiId = parseInt(document.getElementById('loc-poi-select').value);
+  const lang = document.getElementById('loc-lang-select').value;
+  if (!poiId || !confirm(`Xóa bản dịch "${lang}" của POI #${poiId}?`)) return;
+  fetch(`${API_BASE}/api/POI/${poiId}/localization/${lang}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  })
+    .then(res => {
+      if (res.ok) {
+        document.getElementById('loc-status').textContent = '🗑️ Đã xóa bản dịch!';
+        document.getElementById('loc-status').style.color = 'orange';
+        document.getElementById('loc-name-input').value = '';
+        document.getElementById('loc-desc-input').value = '';
+        loadPois();
+      } else {
+        alert('Lỗi xóa bản dịch.');
       }
-    });
+    })
+    .catch(err => console.error(err));
+}
 
-    // Xử lý submit form sửa
-    document.getElementById('edit-poi-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const id = document.getElementById('edit-poi-select').value;
-      if (!id) { alert('Chọn POI cần sửa'); return; }
+// ====== AUDIO MANAGEMENT ======
+document.getElementById('audio-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const newAudio = {
+    poiId: parseInt(document.getElementById('audio-poi-id').value),
+    languageCode: document.getElementById('audio-lang').value,
+    audioUrl: document.getElementById('audio-url').value,
+    transcriptText: document.getElementById('audio-transcript').value
+  };
+  fetch(`${API_BASE}/api/Audio`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(newAudio)
+  })
+    .then(res => {
+      if (res.ok) { alert("Gán audio thành công!"); e.target.reset(); loadPois(); }
+      else { return res.json().then(d => alert("Lỗi: " + (d.message || "không gán được"))); }
+    })
+    .catch(err => console.error("Lỗi POST Audio:", err));
+});
 
-      const updated = {
-        name: document.getElementById('edit-name').value,
-        description: document.getElementById('edit-desc').value,
-        // latitude: parseFloat(document.getElementById('edit-lat').value),
-        // longitude: parseFloat(document.getElementById('edit-lng').value),
-        // radius: parseFloat(document.getElementById('edit-radius').value),
-        // priority: parseInt(document.getElementById('edit-priority').value)
-        lat: parseFloat(document.getElementById('edit-lat').value),
-        lng: parseFloat(document.getElementById('edit-lng').value),
-        radius: parseFloat(document.getElementById('edit-radius').value) || 100,
-        priority: parseInt(document.getElementById('edit-priority').value) || 1
-      };
-
-      fetch(`${API_BASE}/api/POI/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(updated)
-      })
-        .then(res => {
-          //   if (res.ok) { alert('Sửa thành công!'); loadPois(); }
-          //   else alert('Lỗi sửa POI');
-          // });
-          if (res.ok) {
-            alert('Sửa thành công!');
-            loadPois();
-          } else {
-            return res.json().then(data => alert('Lỗi sửa POI: ' + (data.message || 'không rõ lỗi')));
-          }
-        })
-        .catch(err => console.error("Lỗi PUT POI:", err));
-    });
-
-
-
-    // ====== KHỞI ĐỘNG ======
-    loadPois();
-
-    // ====== 5. VẼ BIỂU ĐỒ THỐNG KÊ (CHART.JS) ======
-    function loadTopPoisChart() {
-      fetch(`${API_BASE}/api/Analytics/top-pois`)
-        .then(res => {
-          if (!res.ok) throw new Error("API chưa có hoặc lỗi");
-          return res.json();
-        })
-        .then(data => {
-          // Ẩn dòng chữ TODO trên giao diện
-          const placeholder = document.getElementById('chart-placeholder');
-          if (placeholder) placeholder.style.display = 'none';
-
-          // Lấy thẻ canvas để vẽ
-          const ctx = document.getElementById('topPoisChart').getContext('2d');
-
-          // Bóc tách dữ liệu từ API thành mảng Tên và mảng Lượt nghe
-          const labels = data.map(item => item.poiName || `POI #${item.poiId}`);
-          const counts = data.map(item => item.listenCount);
-
-          // Vẽ biểu đồ cột
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: 'Số lượt nghe',
-                data: counts,
-                backgroundColor: [
-                  '#c0392b', // Đỏ
-                  '#2980b9', // Xanh dương
-                  '#27ae60', // Xanh lá
-                  '#f39c12', // Cam
-                  '#8e44ad'  // Tím
-                ],
-                borderRadius: 4
-              }]
-            },
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { display: false } // Ẩn cái chú thích "Số lượt nghe" màu đỏ
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  suggestedMax: 150, // Nâng cột mốc lên 150
-                  ticks: {
-                    precision: 0 // Đảm bảo luôn hiển thị số nguyên (không có số lẻ)
-                  }
-                }
-              }
-            }
-          });
-        })
-        .catch(err => {
-          console.error("Lỗi tải dữ liệu thống kê:", err);
-          document.getElementById('chart-placeholder').textContent = "Chưa có dữ liệu thống kê hoặc API chưa được backend bật.";
-        });
-    }
-
-    // Khởi động biểu đồ
-    loadTopPoisChart();
-
-    // ====== SIGNALR LIVE TRACKING ======
-    const visitorConnection = new signalR.HubConnectionBuilder()
-      .withUrl(API_BASE + "/visitorHub")
-      .withAutomaticReconnect()
-      .build();
-
-    visitorConnection.on("UpdateVisitorCount", function (count) {
-      document.getElementById("live-visitors-badge").innerHTML = `
-          <span style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span>
-          Live: ${count} thiết bị đang truy cập
-        `;
-    });
-
-    visitorConnection.start()
-      .then(() => visitorConnection.invoke("GetCurrentCount"))
-      .catch(err => console.error("SignalR Error:", err));
-
-    visitorConnection.onreconnected(() => {
-      visitorConnection.invoke("GetCurrentCount").catch(console.error);
-    });
-
-    // ====== QUẢN LÝ NGƯỜI DÙNG ======
-    function loadUsers() {
-      fetch(`${API_BASE}/api/admin/users`, {
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => {
-          if (!res.ok) throw new Error("Chỉ Admin mới có quyền xem danh sách này");
-          return res.json();
-        })
-        .then(users => {
-          const tbody = document.querySelector('#user-table tbody');
-          tbody.innerHTML = '';
-          users.forEach(user => {
-            const tr = document.createElement('tr');
-            const date = new Date(user.createdAt).toLocaleString('vi-VN');
-            const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>`
-              : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>`
-                : `User`;
-            tr.innerHTML = `
+// ====== USER MANAGEMENT ======
+function loadUsers() {
+  fetch(`${API_BASE}/api/admin/users`, { headers: getAuthHeaders() })
+    .then(res => { if (!res.ok) throw new Error("Chỉ Admin mới có quyền"); return res.json(); })
+    .then(users => {
+      const tbody = document.querySelector('#user-table');
+      tbody.innerHTML = '';
+      users.forEach(user => {
+        const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>`
+          : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>` : 'User';
+        const statusBadge = user.isActive
+          ? `<span class="badge-active">Hoạt động</span>`
+          : `<span class="badge-inactive">Bị khóa</span>`;
+        const date = new Date(user.createdAt).toLocaleString('vi-VN');
+        const actionBtn = user.isActive
+          ? `<button class="btn btn-danger" onclick="toggleUser(${user.id}, false)">Khóa</button>`
+          : `<button class="btn" onclick="toggleUser(${user.id}, true)">Mở khóa</button>`;
+        tbody.innerHTML += `
+          <tr>
             <td>#${user.id}</td>
             <td><strong>${user.username}</strong></td>
             <td>${user.email || '-'}</td>
@@ -1090,148 +659,194 @@
             <td>${date}</td>
             <td>${statusBadge}</td>
             <td>${actionBtn}</td>
-          `;
-            tbody.appendChild(tr);
-          });
-        })
-        .catch(err => {
-          const tbody = document.querySelector('#user-table tbody');
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">${err.message}</td></tr>`;
-        });
-    }
+          </tr>
+        `;
+      });
+    })
+    .catch(err => console.error("Lỗi tải users:", err));
+}
 
-    // ====== QUẢN LÝ ĐÁNH GIÁ ======
-    function loadReviews() {
-      fetch(`${API_BASE}/api/admin/reviews`, {
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => res.json())
-        .then(reviews => {
-          const tbody = document.querySelector('#review-table tbody');
-          tbody.innerHTML = '';
-          reviews.forEach(r => {
-            const tr = document.createElement('tr');
-            const date = new Date(r.createdAt).toLocaleString('vi-VN');
-            tr.innerHTML = `
+function toggleUser(id, activate) {
+  fetch(`${API_BASE}/api/admin/users/${id}/toggle-active`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ IsActive: activate })
+  })
+    .then(res => { if (res.ok) { alert('Cập nhật thành công!'); loadUsers(); } else alert('Lỗi'); })
+    .catch(err => console.error("Lỗi toggle user:", err));
+}
+
+// Create Vendor form
+document.getElementById('create-vendor-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const data = {
+    username: document.getElementById('new-vendor-username').value,
+    password: document.getElementById('new-vendor-password').value,
+    storeName: document.getElementById('new-vendor-storename').value,
+    email: document.getElementById('new-vendor-email').value,
+    role: 'Vendor'
+  };
+  fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+    .then(res => res.json())
+    .then(d => {
+      if (res.ok) { alert('Tạo Vendor thành công!'); e.target.reset(); loadUsers(); }
+      else alert(d.message || 'Lỗi tạo Vendor');
+    })
+    .catch(err => console.error("Lỗi create vendor:", err));
+});
+
+// ====== REVIEWS ======
+function loadReviews() {
+  fetch(`${API_BASE}/api/admin/reviews`, { headers: getAuthHeaders() })
+    .then(res => res.json())
+    .then(reviews => {
+      const tbody = document.querySelector('#review-table');
+      tbody.innerHTML = '';
+      reviews.forEach(r => {
+        const date = new Date(r.createdAt).toLocaleString('vi-VN');
+        tbody.innerHTML += `
+          <tr>
             <td>#${r.id}</td>
             <td>${r.user ? r.user.username : `User #${r.userId}`}</td>
             <td>${r.poi ? r.poi.name : `POI #${r.poiId}`}</td>
             <td>${'⭐'.repeat(r.rating)}</td>
             <td>${r.comment || ''}</td>
             <td>${date}</td>
-            <td>
-              <button class="btn btn-danger" onclick="deleteReview(${r.id})">Xóa</button>
-            </td>
-          `;
-            tbody.appendChild(tr);
-          });
-        })
-        .catch(err => console.error("Lỗi tải reviews:", err));
-    }
+            <td><button class="btn btn-danger" onclick="deleteReview(${r.id})">Xóa</button></td>
+          </tr>
+        `;
+      });
+    })
+    .catch(err => console.error("Lỗi tải reviews:", err));
+}
 
-    function deleteReview(id) {
-      if (!confirm(`Bạn có chắc muốn xóa đánh giá #${id} này?`)) return;
-      fetch(`${API_BASE}/api/admin/reviews/${id}`, {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => {
-          if (res.ok) {
-            alert('Xóa thành công');
-            loadReviews();
-          } else {
-            alert('Lỗi xóa đánh giá');
-          }
-        })
-        .catch(err => console.error("Lỗi DELETE review:", err));
-    }
+function deleteReview(id) {
+  if (!confirm(`Xóa đánh giá #${id}?`)) return;
+  fetch(`${API_BASE}/api/admin/reviews/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
+    .then(res => { if (res.ok) { alert('Xóa thành công'); loadReviews(); } else alert('Lỗi'); })
+    .catch(err => console.error("Lỗi DELETE review:", err));
+}
 
-    // ====== QUẢN LÝ DUYỆT QUYỀN ======
-    function loadApprovals() {
-      fetch(`${API_BASE}/api/admin/approvals/registrations`, {
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => res.json())
-        .then(regs => {
-          const tbody = document.querySelector('#approval-table tbody');
-          tbody.innerHTML = '';
-          if (regs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Không có yêu cầu chờ duyệt nào.</td></tr>';
-            return;
-          }
-          regs.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
+// ====== APPROVALS ======
+function loadApprovals() {
+  fetch(`${API_BASE}/api/admin/approvals/registrations`, { headers: getAuthHeaders() })
+    .then(res => res.json())
+    .then(regs => {
+      const tbody = document.querySelector('#approval-table');
+      tbody.innerHTML = '';
+      if (regs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Không có yêu cầu nào.</td></tr>';
+        return;
+      }
+      regs.forEach(r => {
+        tbody.innerHTML += `
+          <tr>
             <td>#${r.id}</td>
             <td>${r.user ? r.user.username : `User #${r.userId}`}</td>
             <td><strong>${r.businessName}</strong></td>
             <td>${r.businessAddress}</td>
             <td><span style="color:orange;font-weight:bold">${r.status}</span></td>
-            <td>
-              <button class="btn" onclick="approveRegistration(${r.id})">Duyệt cấp quyền</button>
-            </td>
-          `;
-            tbody.appendChild(tr);
-          });
-        })
-        .catch(err => console.error("Lỗi tải approvals:", err));
-    }
+            <td><button class="btn" onclick="approveRegistration(${r.id})">Duyệt cấp quyền</button></td>
+          </tr>
+        `;
+      });
+    })
+    .catch(err => console.error("Lỗi tải approvals:", err));
+}
 
-    function approveRegistration(id) {
-      if (!confirm(`Duyệt cấp quyền Vendor cho yêu cầu #${id}?`)) return;
-      fetch(`${API_BASE}/api/admin/approvals/registrations/${id}/approve`, {
-        method: 'POST',
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => {
-          if (res.ok) {
-            alert('Duyệt thành công!');
-            loadApprovals();
-            loadUsers(); // Refresh danh sách user
-          } else {
-            alert('Lỗi duyệt yêu cầu');
-          }
-        })
-        .catch(err => console.error("Lỗi POST approve:", err));
-    }
+function approveRegistration(id) {
+  if (!confirm(`Duyệt cấp quyền Vendor cho yêu cầu #${id}?`)) return;
+  fetch(`${API_BASE}/api/admin/approvals/registrations/${id}/approve`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  })
+    .then(res => { if (res.ok) { alert('Duyệt thành công!'); loadApprovals(); loadUsers(); } else alert('Lỗi duyệt'); })
+    .catch(err => console.error("Lỗi approve:", err));
+}
 
-    // Khởi động load danh sách khi vào trang
-    if (checkAuth()) {
-      loadUsers();
-      loadReviews();
-      loadApprovals();
-    }
+// ====== ANALYTICS ======
+function loadTopPoisChart() {
+  fetch(`${API_BASE}/api/Analytics/top-pois`)
+    .then(res => { if (!res.ok) throw new Error("API chưa có"); return res.json(); })
+    .then(data => {
+      const placeholder = document.getElementById('chart-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+      const ctx = document.getElementById('topPoisChart').getContext('2d');
+      const labels = data.map(item => item.poiName || `POI #${item.poiId}`);
+      const counts = data.map(item => item.listenCount);
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ label: 'Số lượt nghe', data: counts, backgroundColor: '#c0392b', borderRadius: 4 }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 50, ticks: { stepSize: 1 } } } }
+      });
+    })
+    .catch(err => {
+      console.error("Lỗi tải thống kê:", err);
+      document.getElementById('chart-placeholder').textContent = "Chưa có dữ liệu thống kê.";
+    });
+}
 
-    // Load activity log
-    function loadActivityLog() {
-      const logContainer = document.getElementById('activity-log');
-      fetch(`${API_BASE}/api/listenhistory?limit=10`, {
-        headers: { ...getAuthHeaders() }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.length === 0) {
-            logContainer.innerHTML = '<p style="color: var(--muted);">Chưa có hoạt động nào.</p>';
-            return;
-          }
-          logContainer.innerHTML = data.slice(0, 10).map(item => {
-            const time = new Date(item.listenedAt || item.createdAt).toLocaleString('vi-VN');
-            return `<div style="padding:8px 0;border-bottom:1px solid #eee;">
-              <span style="color:#666;font-size:0.8rem;">${time}</span>
-              <span> • </span>
-              <span>POI #${item.poiId}</span>
-              <span style="color:#888;">(${item.language || 'vi'})</span>
-            </div>`;
-          }).join('');
-        })
-        .catch(() => {
-          logContainer.innerHTML = '<p style="color: var(--muted);">Không thể tải log.</p>';
-        });
-    }
+function loadActivityLog() {
+  const logContainer = document.getElementById('activity-log');
+  fetch(`${API_BASE}/api/listenhistory?limit=10`, { headers: getAuthHeaders() })
+    .then(res => res.json())
+    .then(data => {
+      if (data.length === 0) {
+        logContainer.innerHTML = '<p style="color:var(--muted)">Chưa có hoạt động nào.</p>';
+        return;
+      }
+      logContainer.innerHTML = data.slice(0, 10).map(item => {
+        const time = new Date(item.listenedAt || item.createdAt).toLocaleString('vi-VN');
+        return `<div style="padding:6px 0;border-bottom:1px solid #eee;font-size:0.85rem;">
+          <span style="color:#888;">${time}</span>
+          <span> • POI #${item.poiId}</span>
+          <span style="color:#aaa;">(${item.language || 'vi'})</span>
+        </div>`;
+      }).join('');
+    })
+    .catch(() => { logContainer.innerHTML = '<p style="color:var(--muted)">Không thể tải log.</p>'; });
+}
 
-  </script>
+// ====== SIGNALR LIVE TRACKING ======
+const visitorConnection = new signalR.HubConnectionBuilder()
+  .withUrl(API_BASE + "/visitorHub")
+  .withAutomaticReconnect()
+  .build();
 
+visitorConnection.on("UpdateVisitorCount", function (count) {
+  document.getElementById("live-visitors-badge").innerHTML =
+    `<span style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span> Live: ${count} thiết bị`;
+});
 
+visitorConnection.start()
+  .then(() => visitorConnection.invoke("GetCurrentCount"))
+  .catch(err => console.error("SignalR Error:", err));
+
+visitorConnection.onreconnected(() => {
+  visitorConnection.invoke("GetCurrentCount").catch(console.error);
+});
+
+// ====== INIT DASHBOARD ======
+function initDashboard() {
+  loadPois();
+  loadUsers();
+  loadReviews();
+  loadApprovals();
+  loadTopPoisChart();
+  loadActivityLog();
+}
+
+// ====== BOOTSTRAP ======
+if (checkAuth()) {
+  initDashboard();
+}
+</script>
 </body>
-
 </html>

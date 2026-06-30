@@ -18,12 +18,23 @@ namespace TourGuideApp.Controllers
         }
 
         [HttpGet("poi/{poiId}")]
-        public async Task<ActionResult<IEnumerable<Review>>> GetReviewsForPoi(int poiId)
+        public async Task<ActionResult<IEnumerable<object>>> GetReviewsForPoi(int poiId)
         {
-            return await _context.Reviews
+            var reviews = await _context.Reviews
+                .Include(r => r.User)
                 .Where(r => r.POIId == poiId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
+
+            return reviews.Select(r => new
+            {
+                r.Id,
+                r.UserId,
+                userName = r.User != null ? r.User.Username : "Người dùng",
+                r.Rating,
+                r.Comment,
+                r.CreatedAt
+            }).ToList();
         }
 
         [HttpPost]

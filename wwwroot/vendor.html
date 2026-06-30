@@ -374,29 +374,6 @@
     transition: height 0.3s;
   }
 
-  /* Language tabs for audio */
-  .lang-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-  }
-  .lang-tab {
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    background: #f0f0f0;
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-  }
-  .lang-tab.active {
-    background: var(--primary);
-    color: #fff;
-    border-color: var(--primary);
-  }
-  .lang-content { display: none; }
-  .lang-content.active { display: block; }
 
   @media (max-width: 768px) {
     .header { flex-direction: column; gap: 10px; text-align: center; }
@@ -474,7 +451,6 @@
 
   <nav class="nav-tabs">
     <div class="nav-tab active" onclick="showTab('store')">Cửa hàng</div>
-    <div class="nav-tab" onclick="showTab('poi')">Nội dung POI</div>
     <div class="nav-tab" onclick="showTab('stats')">Báo cáo</div>
   </nav>
 
@@ -517,30 +493,6 @@
       </div>
     </div>
 
-    <!-- ==================== POI CONTENT TAB ==================== -->
-    <div id="tab-poi" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h3>Quản lý nội dung thuyết minh</h3>
-        </div>
-        <p style="color: var(--muted); margin-bottom: 15px;">
-          Chọn POI và ngôn ngữ để quản lý nội dung audio thuyết minh cho khách du lịch.
-        </p>
-        
-        <div class="form-group">
-          <label>Chọn POI</label>
-          <select id="poi-selector" onchange="loadPOIAudios()">
-            <option value="">-- Chọn POI --</option>
-          </select>
-        </div>
-
-        <div id="audio-editor" style="display:none;">
-          <div class="lang-tabs" id="lang-tabs"></div>
-          <div id="audio-content"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- ==================== STATS TAB ==================== -->
     <div id="tab-stats" class="tab-content">
       <div class="stats-grid">
@@ -551,10 +503,6 @@
         <div class="stat-card">
           <h4>Lượt nghe tháng này</h4>
           <div class="value" id="stat-monthly-listens">0</div>
-        </div>
-        <div class="stat-card">
-          <h4>Số người nghe duy nhất</h4>
-          <div class="value" id="stat-unique-listeners">0</div>
         </div>
         <div class="stat-card">
           <h4>Xếp hạng POI</h4>
@@ -736,8 +684,8 @@
     const user = getUser();
     document.getElementById('user-display').textContent = `👤 ${user.username} (${user.role})`;
     await loadStoreInfo();
-    await loadPOIs();
-    await loadStats();
+    const pois = await loadPOIs();
+    await loadStats(pois);
   }
 
   async function loadStoreInfo() {
@@ -759,9 +707,10 @@
     if (res.ok) {
       const pois = await res.json();
       renderPOITable(pois);
-      renderPOISelector(pois);
       document.getElementById('store-poi-count').textContent = pois.length;
+      return pois;
     }
+    return [];
   }
 
   function renderPOITable(pois) {
@@ -781,12 +730,6 @@
         </td>
       </tr>
     `).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Chưa có POI nào</td></tr>';
-  }
-
-  function renderPOISelector(pois) {
-    const sel = document.getElementById('poi-selector');
-    sel.innerHTML = '<option value="">-- Chọn POI --</option>' + 
-      pois.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   }
 
   // ============ POI CRUD ============
@@ -828,101 +771,22 @@
     }
   }
 
-  // ============ Audio Management ============
-  async function loadPOIAudios() {
-    const poiId = document.getElementById('poi-selector').value;
-    if (!poiId) {
-      document.getElementById('audio-editor').style.display = 'none';
-      return;
-    }
-    
-    const res = await fetch(`${API_BASE}/api/POI/${poiId}`, {
-      headers: { 'Authorization': `Bearer ${getToken()}` }
-    });
-    if (res.ok) {
-      const poi = await res.json();
-      const audios = poi.audios || [];
-      
-      const allLangs = ['vi', 'en', 'ko', 'zh'];
-      const langTabs = document.getElementById('lang-tabs');
-      const audioContent = document.getElementById('audio-content');
-      
-      langTabs.innerHTML = allLangs.map((lang, i) => 
-        `<div class="lang-tab ${i === 0 ? 'active' : ''}" onclick="showLangTab('${lang}')">${getLangName(lang)}</div>`
-      ).join('');
-      
-      audioContent.innerHTML = allLangs.map((lang, i) => {
-        const audio = audios.find(a => a.languageCode === lang);
-        return `
-          <div id="audio-${lang}" class="lang-content ${i === 0 ? 'active' : ''}">
-            <div class="form-group">
-              <label>URL Audio (${getLangName(lang)})</label>
-              <input type="text" id="audio-url-${lang}" value="${audio?.audioUrl || ''}" placeholder="/audio/poi_audio.mp3">
-            </div>
-            <div class="form-group">
-              <label>Nội dung transcript (${getLangName(lang)})</label>
-              <textarea id="audio-transcript-${lang}" rows="4" placeholder="Nhập nội dung thuyết minh...">${audio?.transcriptText || ''}</textarea>
-            </div>
-            <button type="button" class="btn" onclick="saveAudio(${poiId}, '${lang}')">Lưu nội dung ${getLangName(lang)}</button>
-          </div>
-        `;
-      }).join('');
-      
-      document.getElementById('audio-editor').style.display = 'block';
-    }
-  }
-
-  function showLangTab(lang) {
-    document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.lang-content').forEach(c => c.classList.remove('active'));
-    document.querySelector(`.lang-tab[onclick="showLangTab('${lang}')"]`).classList.add('active');
-    document.getElementById(`audio-${lang}`).classList.add('active');
-  }
-
   function getLangName(code) {
     const names = { vi: 'Tiếng Việt', en: 'English', ko: '한국어', zh: '中文' };
     return names[code] || code;
   }
 
-  async function saveAudio(poiId, lang) {
-    const url = document.getElementById(`audio-url-${lang}`).value;
-    const transcript = document.getElementById(`audio-transcript-${lang}`).value;
-    
-    const res = await fetch(`${API_BASE}/api/audios`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ poiId, languageCode: lang, audioUrl: url, transcriptText: transcript })
-    });
-    
-    if (res.ok) {
-      alert('Lưu thành công!');
-    } else {
-      alert('Lưu thất bại!');
-    }
-  }
-
   // ============ Stats ============
-  async function loadStats() {
-    const res = await fetch(`${API_BASE}/api/POI/my`, {
-      headers: { 'Authorization': `Bearer ${getToken()}` }
-    });
-    if (!res.ok) return;
-    const pois = await res.json();
-    
-    // Fetch stats from ListenHistory API
+  async function loadStats(pois) {
     const statsRes = await fetch(`${API_BASE}/api/listenhistory/stats`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
     if (!statsRes.ok) return;
-    
+
     const data = await statsRes.json();
     
     document.getElementById('stat-total-listens').textContent = data.totalListens || 0;
     document.getElementById('stat-monthly-listens').textContent = data.monthlyListens || 0;
-    document.getElementById('stat-unique-listeners').textContent = data.uniqueUsers || 0;
     
     const topPoiId = data.byPOI && data.byPOI.length > 0 ? data.byPOI[0].poiId : null;
     let topPoiName = '-';
@@ -949,6 +813,27 @@
         const percentage = Math.round((item.count / total) * 100);
         return `<tr><td>${getLangName(item.language)}</td><td>${item.count}</td><td>${percentage}%</td></tr>`;
       }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>';
+    }
+
+    // Render 7-day bar chart
+    const chartBars = document.getElementById('chart-bars');
+    const chartLabels = document.getElementById('chart-labels');
+    if (chartBars && chartLabels) {
+      const daily = data.daily || [];
+      if (daily.length === 0) {
+        chartBars.innerHTML = '<div style="color:var(--muted);padding:20px;">Chưa có dữ liệu lượt nghe</div>';
+        chartLabels.innerHTML = '';
+      } else {
+        const maxCount = Math.max(...daily.map(d => d.count), 1);
+        chartBars.innerHTML = daily.map(d => {
+          const height = Math.round((d.count / maxCount) * 180);
+          return `<div class="chart-bar" style="height:${height}px;" title="${d.count} lượt nghe"></div>`;
+        }).join('');
+        chartLabels.innerHTML = daily.map(d => {
+          const date = new Date(d.date);
+          return `<span>${date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</span>`;
+        }).join('');
+      }
     }
   }
 

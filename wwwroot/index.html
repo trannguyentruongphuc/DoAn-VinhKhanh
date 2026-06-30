@@ -547,6 +547,10 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' 
 
 // ====== AUTH FUNCTIONS (Global - outside DOMContentLoaded) ======
 function openAuthModal(tab) {
+  document.getElementById('auth-modal').classList.add('active');
+}
+
+function closeAuthModal() {
   document.getElementById('auth-modal').classList.remove('active');
 }
 
@@ -601,9 +605,16 @@ async function handleLogin(e) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       showAuthMessage('Đăng nhập thành công!', 'success');
+
       setTimeout(() => {
         closeAuthModal();
         updateAuthUI();
+
+        if (data.user?.role === 'Admin') {
+          window.location.href = '/admin.html';
+        } else if (data.user?.role === 'Vendor') {
+          window.location.href = '/vendor.html';
+        }
       }, 500);
     } else {
       showAuthMessage(data.message || 'Đăng nhập thất bại', 'error');
@@ -795,16 +806,33 @@ window.addEventListener('DOMContentLoaded', function() {
   let currentLang = "vi";
 
   function getPoiDescriptionByLang(poi, lang) {
+    if (!poi) return '';
     if (lang === 'vi') {
       const audioVi = poi?.audios?.find(a => a.languageCode === 'vi');
       return (audioVi && audioVi.transcriptText && audioVi.transcriptText.trim() !== "") ? audioVi.transcriptText : poi.description;
     }
+    // Ưu tiên 1: PoiLocalization (bản dịch chuyên nghiệp)
+    const loc = poi?.localizations?.find(l => l.languageCode === lang);
+    if (loc && loc.translatedDescription && loc.translatedDescription.trim() !== "") {
+      return loc.translatedDescription;
+    }
+    // Ưu tiên 2: Audio transcript theo ngôn ngữ
     const audio = poi?.audios?.find(a => a.languageCode === lang);
     if (audio && audio.transcriptText && audio.transcriptText.trim() !== "") {
       return audio.transcriptText;
     }
-    const msgs = { en: "Description not available in English.", ko: "이 언어로 된 설명이 없습니다.", zh: "此语言没有可用的说明。" };
+    const msgs = { en: "Description not available in English.", ko: "이 언어로 된 설명이 없습니다.", zh: "此语言 has no available description." };
     return msgs[lang] || "Chưa có bản dịch.";
+  }
+
+  function getPoiNameByLang(poi, lang) {
+    if (!poi) return '';
+    if (lang === 'vi') return poi.name;
+    const loc = poi?.localizations?.find(l => l.languageCode === lang);
+    if (loc && loc.translatedName && loc.translatedName.trim() !== "") {
+      return loc.translatedName;
+    }
+    return poi.name;
   }
 
   function updateAllMarkerPopups() {
@@ -843,6 +871,18 @@ window.addEventListener('DOMContentLoaded', function() {
     currentLang = e.target.value;
     document.getElementById('status-bar').textContent = I18N[currentLang].waiting;
     updateAllMarkerPopups();
+    renderHistory();
+    // Tự phát lại audio nếu đang có đang phát
+    const audioEl = document.getElementById('np-audio');
+    if (audioEl.src && audioEl.src !== window.location.href) {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      const nowPlaying = document.getElementById('now-playing');
+      if (nowPlaying.classList.contains('active') && window.currentPlayingPoiId) {
+        window.playPoiById(window.currentPlayingPoiId);
+      }
+    }
   });
 
   // ====== 3. COOLDOWN CHỐNG SPAM ÂM THANH ======
@@ -871,12 +911,15 @@ window.addEventListener('DOMContentLoaded', function() {
       container.innerHTML = 'Chưa có điểm nào được tham quan.';
       return;
     }
-    container.innerHTML = history.slice(0, 5).map(h => `
+    container.innerHTML = history.slice(0, 5).map(h => {
+      const poi = (window.allPois || []).find(p => p.id === h.id);
+      const displayName = poi ? (getPoiNameByLang(poi, currentLang) || h.name) : h.name;
+      return `
       <div class="history-item" onclick="window.playPoiById(${h.id})">
-        <div class="name">📍 ${h.name}</div>
+        <div class="name">📍 ${displayName}</div>
         <div class="time">${new Date(h.time).toLocaleString('vi-VN')}</div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   // ====== TOAST NOTIFICATION ======
@@ -918,13 +961,17 @@ window.addEventListener('DOMContentLoaded', function() {
         results.classList.remove('active');
         return;
       }
-      const matches = window.allPois.filter(p => p.name.toLowerCase().includes(query));
+      const matches = window.allPois.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        const locName = (getPoiNameByLang(p, currentLang) || '').toLowerCase();
+        return name.includes(query) || locName.includes(query);
+      });
       if (matches.length === 0) {
         results.innerHTML = '<div class="search-result-item">Không tìm thấy</div>';
       } else {
         results.innerHTML = matches.map(p => `
           <div class="search-result-item" onclick="window.playPoiById(${p.id}); results.classList.remove('active'); input.value = '';">
-            📍 ${p.name}
+            📍 ${getPoiNameByLang(p, currentLang) || p.name}
           </div>
         `).join('');
       }
@@ -947,8 +994,8 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   }, { once: true });
 
-  // Phát Audio hoặc TTS
-  function renderNowPlaying(poi, audioUrl, transcriptText) {
+  // Phát Audio hoặc TTS (translatedName/translatedDesc đến từ API location/check khi dùng GPS)
+  function renderNowPlaying(poi, audioUrl, transcriptText, translatedName, translatedDesc, fromGps = false) {
     // Dừng audio đang phát (nếu có) trước khi nạp audio mới, tránh tiếng đè tiếng
     // khi quét QR liên tiếp hoặc đi qua điểm mới trong lúc audio cũ chưa hết.
     audioEl.pause();
@@ -956,9 +1003,15 @@ window.addEventListener('DOMContentLoaded', function() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     document.getElementById('now-playing').classList.add('active');
-    document.getElementById('np-title').textContent = poi.name;
-    const textToSpeak = transcriptText || poi.description;
+
+    // Ưu tiên tên/mô tả từ API đã dịch, rồi đến PoiLocalization, cuối cùng fallback về mặc định
+    const displayName = translatedName || getPoiNameByLang(poi, currentLang) || poi.name;
+    const textToSpeak = transcriptText || translatedDesc || getPoiDescriptionByLang(poi, currentLang) || poi.description;
+    document.getElementById('np-title').textContent = displayName;
     document.getElementById('np-desc').textContent = textToSpeak;
+
+    // Ghi nhớ POI đang phát để đổi ngôn ngữ tự restart
+    window.currentPlayingPoiId = poi.id;
 
     // Thêm nút hành động: (đã bỏ chỉ đường và chia sẻ)
     const nowPlaying = document.getElementById('now-playing');
@@ -982,12 +1035,12 @@ window.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    // --- ĐOẠN CODE BẮN TÍN HIỆU CỘNG ĐIỂM ---
-    fetch(`${API_BASE}/api/Analytics/increment/${poi.id}?lang=${currentLang}`, {
-        method: 'POST'
-    })
-    .then(res => console.log(`Đã gửi thống kê: Điểm #${poi.id}, Tiếng: ${currentLang}`))
-    .catch(err => console.error("Lỗi gửi thống kê:", err));
+    // Log thống kê chỉ khi KHÔNG phải từ GPS (GPS-triggered đã được LocationController.Check log sẵn)
+    if (!fromGps) {
+        fetch(`${API_BASE}/api/Analytics/increment/${poi.id}?lang=${currentLang}`, { method: 'POST' })
+            .then(res => console.log(`Đã gửi thống kê: Điểm #${poi.id}, Tiếng: ${currentLang}`))
+            .catch(err => console.error("Lỗi gửi thống kê:", err));
+    }
 
     // --- HIỂN THỊ REVIEWS VÀ FAVORITES CHO POI NÀY ---
     loadPoiReviews(poi.id);
@@ -1003,18 +1056,29 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     lastPlayedPoiId = data.poi.id;
-    
+
     // Xóa thông báo "chưa có audio" nếu có
     const container = document.getElementById('now-playing');
     const noAudioNotice = container.querySelector('.no-audio-notice');
     if (noAudioNotice) noAudioNotice.remove();
-    
+
     // Hiện audio player nếu bị ẩn
     const audioEl = document.getElementById('np-audio');
     audioEl.style.display = 'block';
-    
-    renderNowPlaying(data.poi, data.audioUrl, data.transcriptText);
-    document.getElementById('status-bar').textContent = I18N[currentLang].inRange(data.poi.name);
+
+    renderNowPlaying(data.poi, data.audioUrl, data.transcriptText, data.translatedName, data.translatedDesc, true);
+
+    const poiName = data.translatedName || data.poi.name;
+    document.getElementById('status-bar').textContent = I18N[currentLang].inRange(poiName);
+
+    // Nếu không có audioUrl (ngôn ngữ khác không có file audio) -> dùng TTS
+    if (!data.audioUrl) {
+      const textToSpeak = data.translatedDesc || data.poi.description || 'Chưa có mô tả cho điểm này.';
+      const ttsLang = currentLang === 'vi' ? 'vi' : currentLang;
+      const ttsUrl = `${API_BASE}/api/Tts?text=${encodeURIComponent(textToSpeak)}&lang=${ttsLang}`;
+      audioEl.src = ttsUrl;
+      audioEl.play().catch(e => console.warn("TTS autoplay bị chặn:", e));
+    }
 
     if (!overrideCooldown) {
       cooldownActive = true;
@@ -1056,11 +1120,12 @@ window.addEventListener('DOMContentLoaded', function() {
       const key = `proximity_${poi.id}`;
       if (distance <= PROXIMITY_NOTIFY_DISTANCE && lastNotifiedPoiId !== poi.id) {
         // Thông báo đang tiến vào
+        const poiName = getPoiNameByLang(poi, currentLang) || poi.name;
         const langMsg = {
-          vi: `Đang tiến vào: ${poi.name} (${Math.round(distance)}m)`,
-          en: `Approaching: ${poi.name} (${Math.round(distance)}m)`,
-          ko: `가까워지고 있습니다: ${poi.name} (${Math.round(distance)}m)`,
-          zh: `正在接近: ${poi.name} (${Math.round(distance)}m)`
+          vi: `Đang tiến vào: ${poiName} (${Math.round(distance)}m)`,
+          en: `Approaching: ${poiName} (${Math.round(distance)}m)`,
+          ko: `가까워지고 있습니다: ${poiName} (${Math.round(distance)}m)`,
+          zh: `正在接近: ${poiName} (${Math.round(distance)}m)`
         };
         showToast(langMsg[currentLang] || langMsg.vi);
         lastNotifiedPoiId = poi.id;
@@ -1111,11 +1176,12 @@ window.addEventListener('DOMContentLoaded', function() {
         const marker = L.marker([poi.lat, poi.lng]).addTo(map);
         
         // Popup với nút "Nghe thuyết minh"
+        const localizedName = getPoiNameByLang(poi, currentLang) || poi.name;
         const localizedDesc = getPoiDescriptionByLang(poi, currentLang) || '';
         const shortDesc = localizedDesc.length > 60 ? localizedDesc.substring(0, 60) + '...' : localizedDesc;
         marker.bindPopup(`
           <div style="text-align:center;min-width:200px;">
-            <strong style="font-size:14px;">${poi.name}</strong>
+            <strong style="font-size:14px;">${localizedName}</strong>
             ${shortDesc ? `<p style="margin:6px 0;font-size:12px;color:#666;">${shortDesc}</p>` : ''}
             
             <!-- Mã QR cho điện thoại quét bằng Camera thường / Zalo -->
@@ -1165,22 +1231,20 @@ window.addEventListener('DOMContentLoaded', function() {
         return res.json();
       })
       .then(poi => {
-        const audio = poi.audios?.find(a => a.languageCode === currentLang)
-                   || poi.audios?.find(a => a.languageCode === "vi")
-                   || poi.audios?.[0];
+        // Tìm audio file theo ngôn ngữ hiện tại; không fallback sang audio vi (để TTS đọc bản dịch)
+        const audioByLang = poi.audios?.find(a => a.languageCode === currentLang);
 
-        if (!audio) {
-          // Không có audio -> hiển thị thông tin POI
+        if (audioByLang) {
+          triggerAudio({
+            triggered: true,
+            poi: poi,
+            audioUrl: audioByLang.audioUrl,
+            transcriptText: audioByLang.transcriptText
+          }, { overrideCooldown: true });
+        } else {
+          // Không có audio theo ngôn ngữ -> dùng TTS với bản dịch
           showPoiInfo(poi);
-          return;
         }
-
-        triggerAudio({
-          triggered: true,
-          poi: poi,
-          audioUrl: audio.audioUrl,
-          transcriptText: audio.transcriptText
-        }, { overrideCooldown: true });
       })
       .catch(err => {
         console.error("Lỗi lấy POI theo ID (QR):", err);
@@ -1196,8 +1260,8 @@ window.addEventListener('DOMContentLoaded', function() {
     const audioEl = document.getElementById('np-audio');
     
     // Hiển thị thông tin
-    titleEl.textContent = poi.name;
-    const textToSpeak = poi.description || 'Chưa có mô tả cho điểm này.';
+    titleEl.textContent = getPoiNameByLang(poi, currentLang) || poi.name;
+    const textToSpeak = getPoiDescriptionByLang(poi, currentLang) || poi.description || 'Chưa có mô tả cho điểm này.';
     descEl.textContent = textToSpeak;
     
     // Ẩn audio player vì chưa có audio
@@ -1340,7 +1404,7 @@ window.addEventListener('DOMContentLoaded', function() {
           listEl.innerHTML += `
             <div style="padding: 10px 0; border-bottom: 1px dashed var(--border);">
               <div style="display: flex; justify-content: space-between;">
-                <strong>User #${r.userId}</strong>
+                <strong>${r.userName || 'Người dùng'}</strong>
                 <span style="color:var(--muted); font-size: 0.8rem;">${date}</span>
               </div>
               <div style="color: #f1c40f; font-size: 1.1rem; margin-bottom: 5px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
@@ -1523,6 +1587,19 @@ window.addEventListener('DOMContentLoaded', function() {
     window.playPoiById(poiId);
   }
 
+  // Expose functions for HTML onclick handlers
+  window.openReviewModal = openReviewModal;
+  window.handleReviewSubmit = handleReviewSubmit;
+  window.toggleFavorite = toggleFavorite;
+  window.openFavoritesModal = openFavoritesModal;
+  window.playFavorite = playFavorite;
+  window.checkFavoriteStatus = checkFavoriteStatus;
+  window.switchTab = switchTab;
+  window.logout = logout;
+  window.openVendorModal = openVendorModal;
+  window.handleVendorSubmit = handleVendorSubmit;
+
+}); // end DOMContentLoaded
 </script>
 </body>
 </html>

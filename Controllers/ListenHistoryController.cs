@@ -105,7 +105,6 @@ namespace TourGuideApp.Controllers
             var allListens = await query.ToListAsync();
             var now = DateTime.UtcNow;
             var thisMonth = allListens.Where(h => h.ListenedAt >= new DateTime(now.Year, now.Month, 1)).ToList();
-            var uniqueUsers = 0; // Not tracked anymore
 
             // Stats by language
             var langStats = allListens
@@ -121,13 +120,23 @@ namespace TourGuideApp.Controllers
                 .OrderByDescending(x => x.count)
                 .ToList();
 
+            // Daily stats for last 7 days
+            var sevenDaysAgo = now.AddDays(-6).Date;
+            var dailyStats = Enumerable.Range(0, 7)
+                .Select(i => {
+                    var date = sevenDaysAgo.AddDays(i).Date;
+                    var count = allListens.Count(h => h.ListenedAt.Date == date);
+                    return new { date = date.ToString("yyyy-MM-dd"), count };
+                })
+                .ToList();
+
             return Ok(new
             {
                 totalListens = allListens.Count,
                 monthlyListens = thisMonth.Count,
-                uniqueUsers = uniqueUsers,
                 byLanguage = langStats,
-                byPOI = poiStats
+                byPOI = poiStats,
+                daily = dailyStats
             });
         }
     }

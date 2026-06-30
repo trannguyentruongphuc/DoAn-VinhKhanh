@@ -22,9 +22,10 @@ namespace TourGuideApp.Controllers
         [HttpGet("check")]
         public async Task<IActionResult> Check(double lat, double lng, string lang = "vi")
         {
-            // .Include(p => p.Audios): nạp kèm toàn bộ bản audio (mọi ngôn ngữ) của từng POI
+            // .Include(p => p.Audios, p => p.Localizations): nạp kèm toàn bộ bản audio và bản dịch của từng POI
             var pois = await _context.POIs
                 .Include(p => p.Audios)
+                .Include(p => p.Localizations)
                 .ToListAsync();
 
             // Lọc các điểm mà người dùng đang nằm trong vùng bán kính
@@ -50,7 +51,12 @@ namespace TourGuideApp.Controllers
                 .First()
                 .Poi;
 
-            // Tìm bản audio đúng ngôn ngữ đang chọn; nếu không có, fallback về "vi"
+            // Tìm bản dịch theo ngôn ngữ
+            var loc = best.Localizations?.FirstOrDefault(l => l.LanguageCode == lang);
+            var translatedName = loc?.TranslatedName ?? best.Name;
+            var translatedDesc = loc?.TranslatedDescription ?? best.Description;
+
+            // Tìm audio theo ngôn ngữ, fallback về vi nếu không có
             var audio = best.Audios.FirstOrDefault(a => a.LanguageCode == lang)
                         ?? best.Audios.FirstOrDefault(a => a.LanguageCode == "vi")
                         ?? best.Audios.FirstOrDefault();
@@ -68,6 +74,12 @@ namespace TourGuideApp.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // Nếu người dùng chọn ngôn ngữ KHÔNG PHẢI vi mà không có audio → trả null để frontend dùng TTS
+            var audioUrl = (lang != "vi" && best.Audios.All(a => a.LanguageCode != lang) && best.Audios.Any(a => a.LanguageCode == "vi"))
+                           ? null : audio?.AudioUrl;
+            var transcriptText = (lang != "vi" && best.Audios.All(a => a.LanguageCode != lang) && best.Audios.Any(a => a.LanguageCode == "vi"))
+                                 ? null : audio?.TranscriptText;
+
             return Ok(new
             {
                 triggered = true,
@@ -79,10 +91,14 @@ namespace TourGuideApp.Controllers
                     lat = best.Lat,
                     lng = best.Lng,
                     radius = best.Radius,
-                    priority = best.Priority
+                    priority = best.Priority,
+                    localizations = best.Localizations?.Select(l => new { l.LanguageCode, l.TranslatedName, l.TranslatedDescription }),
+                    audios = best.Audios?.Select(a => new { a.LanguageCode, a.AudioUrl, a.TranscriptText })
                 },
-                audioUrl = audio?.AudioUrl,
-                transcriptText = audio?.TranscriptText,
+                translatedName,
+                translatedDesc,
+                audioUrl,
+                transcriptText,
                 languageCode = audio?.LanguageCode
             });
         }

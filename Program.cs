@@ -43,7 +43,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // 4. Đăng ký Swagger (để test API tại /swagger)
-// 4. Đăng ký Swagger (để test API tại /swagger)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
