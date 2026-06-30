@@ -31,11 +31,11 @@ namespace TourGuideApp.Controllers
                 .Select(f => new {
                     f.Id,
                     f.CreatedAt,
-                    PoiId = f.POI.Id,
-                    PoiName = f.POI.Name,
-                    PoiDescription = f.POI.Description,
-                    PoiLat = f.POI.Lat,
-                    PoiLng = f.POI.Lng
+                    PoiId = f.POI!.Id,
+                    PoiName = f.POI!.Name,
+                    PoiDescription = f.POI!.Description,
+                    PoiLat = f.POI!.Lat,
+                    PoiLng = f.POI!.Lng
                 })
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();

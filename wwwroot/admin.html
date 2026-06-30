@@ -634,7 +634,7 @@ document.getElementById('audio-form').addEventListener('submit', (e) => {
 
 // ====== USER MANAGEMENT ======
 function loadUsers() {
-  fetch(`${API_BASE}/api/admin/users`, { headers: getAuthHeaders() })
+  fetch(`${API_BASE}/api/auth/users`, { headers: getAuthHeaders() })
     .then(res => { if (!res.ok) throw new Error("Chỉ Admin mới có quyền"); return res.json(); })
     .then(users => {
       const tbody = document.querySelector('#user-table');
@@ -667,8 +667,8 @@ function loadUsers() {
 }
 
 function toggleUser(id, activate) {
-  fetch(`${API_BASE}/api/admin/users/${id}/toggle-active`, {
-    method: 'POST',
+  fetch(`${API_BASE}/api/auth/user/${id}/status`, {
+    method: 'PUT',
     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ IsActive: activate })
   })

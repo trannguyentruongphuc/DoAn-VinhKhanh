@@ -89,7 +89,7 @@ namespace TourGuideApp.Controllers
 
                 // Update existing audio
                 existingAudio.AudioUrl = finalAudioUrl ?? existingAudio.AudioUrl;
-                existingAudio.TranscriptText = finalTranscript;
+                existingAudio.TranscriptText = finalTranscript ?? existingAudio.TranscriptText;
                 await _context.SaveChangesAsync();
                 return Ok(existingAudio);
             }
@@ -100,7 +100,7 @@ namespace TourGuideApp.Controllers
                 POIId = audio.POIId,
                 LanguageCode = audio.LanguageCode,
                 AudioUrl = finalAudioUrl ?? string.Empty,
-                TranscriptText = finalTranscript
+                TranscriptText = finalTranscript ?? string.Empty
             };
 
             _context.Audios.Add(newAudio);
@@ -141,7 +141,7 @@ namespace TourGuideApp.Controllers
             }
 
             audio.AudioUrl = finalAudioUrl ?? audio.AudioUrl;
-            audio.TranscriptText = finalTranscript;
+            audio.TranscriptText = finalTranscript ?? audio.TranscriptText;
             audio.LanguageCode = updated.LanguageCode;
 
             await _context.SaveChangesAsync();
