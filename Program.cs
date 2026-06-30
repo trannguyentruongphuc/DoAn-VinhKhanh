@@ -3,12 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TourGuideApp.Data;
+using TourGuideApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Đăng ký DbContext dùng SQLite
 builder.Services.AddDbContext<TourGuideContext>(options =>
     options.UseSqlite("Data Source=TourGuide.db"));
+
+// 2. Đăng ký AudioService cho TTS tự động
+builder.Services.AddScoped<AudioService>();
 
 // 2. Đăng ký Controllers
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -119,5 +123,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<TourGuideApp.Hubs.VisitorHub>("/visitorHub");
+
+// Lắng nghe trên tất cả interfaces để các thiết bị khác trong mạng LAN truy cập được
+app.Urls.Clear();
+app.Urls.Add("http://0.0.0.0:5555");
 
 app.Run();

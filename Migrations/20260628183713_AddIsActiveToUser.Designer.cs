@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TourGuideApp.Data;
 
@@ -10,9 +11,11 @@ using TourGuideApp.Data;
 namespace TourGuideApp.Migrations
 {
     [DbContext(typeof(TourGuideContext))]
-    partial class TourGuideContextModelSnapshot : ModelSnapshot
+    [Migration("20260628183713_AddIsActiveToUser")]
+    partial class AddIsActiveToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
@@ -215,92 +218,6 @@ namespace TourGuideApp.Migrations
                         });
                 });
 
-            modelBuilder.Entity("TourGuideApp.Models.AudioTask", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("POIId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TargetLanguage")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("POIId");
-
-                    b.ToTable("AudioTasks");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.DatasetVersion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("VersionNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DatasetVersions");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.FavoritePoi", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("POIId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("POIId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("FavoritePois");
-                });
-
             modelBuilder.Entity("TourGuideApp.Models.ListenHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -358,10 +275,15 @@ namespace TourGuideApp.Migrations
                     b.Property<double>("Radius")
                         .HasColumnType("REAL");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("VendorId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("VendorId");
 
@@ -420,124 +342,6 @@ namespace TourGuideApp.Migrations
                         });
                 });
 
-            modelBuilder.Entity("TourGuideApp.Models.PoiLocalization", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LanguageCode")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("POIId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("TranslatedDescription")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TranslatedName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("POIId");
-
-                    b.ToTable("PoiLocalizations");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.PoiOwnerRegistration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("BusinessAddress")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BusinessName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ProofOfOwnership")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PoiOwnerRegistrations");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.Review", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Comment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("POIId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("POIId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Reviews");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.Role", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Roles");
-                });
-
             modelBuilder.Entity("TourGuideApp.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -552,6 +356,9 @@ namespace TourGuideApp.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -561,9 +368,6 @@ namespace TourGuideApp.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("RoleId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("StoreName")
                         .HasMaxLength(200)
@@ -575,8 +379,6 @@ namespace TourGuideApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
 
                     b.ToTable("Users");
                 });
@@ -592,36 +394,6 @@ namespace TourGuideApp.Migrations
                     b.Navigation("POI");
                 });
 
-            modelBuilder.Entity("TourGuideApp.Models.AudioTask", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.POI", "POI")
-                        .WithMany("AudioTasks")
-                        .HasForeignKey("POIId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("POI");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.FavoritePoi", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.POI", "POI")
-                        .WithMany("FavoritePois")
-                        .HasForeignKey("POIId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TourGuideApp.Models.User", "User")
-                        .WithMany("FavoritePois")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("POI");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TourGuideApp.Models.ListenHistory", b =>
                 {
                     b.HasOne("TourGuideApp.Models.POI", "POI")
@@ -635,89 +407,21 @@ namespace TourGuideApp.Migrations
 
             modelBuilder.Entity("TourGuideApp.Models.POI", b =>
                 {
-                    b.HasOne("TourGuideApp.Models.User", "Vendor")
+                    b.HasOne("TourGuideApp.Models.User", null)
                         .WithMany("OwnedPOIs")
+                        .HasForeignKey("UserId");
+
+                    b.HasOne("TourGuideApp.Models.User", "Vendor")
+                        .WithMany()
                         .HasForeignKey("VendorId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Vendor");
                 });
 
-            modelBuilder.Entity("TourGuideApp.Models.PoiLocalization", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.POI", "POI")
-                        .WithMany("Localizations")
-                        .HasForeignKey("POIId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("POI");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.PoiOwnerRegistration", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.User", "User")
-                        .WithMany("PoiOwnerRegistrations")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.Review", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.POI", "POI")
-                        .WithMany("Reviews")
-                        .HasForeignKey("POIId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TourGuideApp.Models.User", "User")
-                        .WithMany("Reviews")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("POI");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.User", b =>
-                {
-                    b.HasOne("TourGuideApp.Models.Role", null)
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId");
-                });
-
             modelBuilder.Entity("TourGuideApp.Models.POI", b =>
                 {
-                    b.Navigation("AudioTasks");
-
                     b.Navigation("Audios");
-
-                    b.Navigation("FavoritePois");
-
-                    b.Navigation("Localizations");
-
-                    b.Navigation("Reviews");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.Role", b =>
-                {
-                    b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("TourGuideApp.Models.User", b =>
-                {
-                    b.Navigation("FavoritePois");
-
-                    b.Navigation("OwnedPOIs");
-
-                    b.Navigation("PoiOwnerRegistrations");
-
-                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("TourGuideApp.Models.User", b =>

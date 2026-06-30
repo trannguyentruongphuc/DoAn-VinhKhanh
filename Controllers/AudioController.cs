@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TourGuideApp.Data;
 using TourGuideApp.Models;
+using TourGuideApp.Services;
 
 namespace TourGuideApp.Controllers
 {
@@ -12,10 +13,12 @@ namespace TourGuideApp.Controllers
     public class AudioController : ControllerBase
     {
         private readonly TourGuideContext _context;
+        private readonly AudioService _audioService;
 
-        public AudioController(TourGuideContext context)
+        public AudioController(TourGuideContext context, AudioService audioService)
         {
             _context = context;
+            _audioService = audioService;
         }
 
         private int? GetCurrentUserId()
@@ -48,6 +51,7 @@ namespace TourGuideApp.Controllers
         }
 
         // POST /api/audios -> gán audio - ADMIN hoặc VENDOR
+        // Tự động generate audio từ transcript nếu không cung cấp audio URL
         [Authorize(Roles = "Admin,Vendor")]
         [HttpPost]
         public async Task<ActionResult<Audio>> Create([FromBody] Audio audio)
@@ -70,22 +74,43 @@ namespace TourGuideApp.Controllers
             var existingAudio = await _context.Audios
                 .FirstOrDefaultAsync(a => a.POIId == audio.POIId && a.LanguageCode == audio.LanguageCode);
 
+            // Tự động generate audio từ transcript nếu không cung cấp audio URL
+            var (finalAudioUrl, finalTranscript) = await _audioService.AutoGenerateAudioAsync(
+                audio.POIId,
+                audio.LanguageCode,
+                audio.TranscriptText,
+                audio.AudioUrl
+            );
+
             if (existingAudio != null)
             {
+                // Xóa file audio cũ nếu là file local
+                await _audioService.DeleteAudioFileAsync(existingAudio.AudioUrl);
+
                 // Update existing audio
-                existingAudio.AudioUrl = audio.AudioUrl;
-                existingAudio.TranscriptText = audio.TranscriptText;
+                existingAudio.AudioUrl = finalAudioUrl ?? existingAudio.AudioUrl;
+                existingAudio.TranscriptText = finalTranscript;
                 await _context.SaveChangesAsync();
                 return Ok(existingAudio);
             }
 
-            _context.Audios.Add(audio);
+            // Tạo bản audio mới
+            var newAudio = new Audio
+            {
+                POIId = audio.POIId,
+                LanguageCode = audio.LanguageCode,
+                AudioUrl = finalAudioUrl ?? string.Empty,
+                TranscriptText = finalTranscript
+            };
+
+            _context.Audios.Add(newAudio);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetByPoi), new { poiId = audio.POIId }, audio);
+            return CreatedAtAction(nameof(GetByPoi), new { poiId = newAudio.POIId }, newAudio);
         }
 
         // PUT /api/audios/{id} -> sửa link audio / transcript - ADMIN hoặc VENDOR
+        // Tự động generate audio từ transcript nếu không cung cấp audio URL
         [Authorize(Roles = "Admin,Vendor")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] Audio updated)
@@ -101,8 +126,22 @@ namespace TourGuideApp.Controllers
                 return Forbid();
             }
 
-            audio.AudioUrl = updated.AudioUrl;
-            audio.TranscriptText = updated.TranscriptText;
+            // Tự động generate audio từ transcript nếu không cung cấp audio URL
+            var (finalAudioUrl, finalTranscript) = await _audioService.AutoGenerateAudioAsync(
+                audio.POIId,
+                audio.LanguageCode,
+                updated.TranscriptText,
+                updated.AudioUrl
+            );
+
+            // Xóa file audio cũ nếu là file local và sẽ được thay thế
+            if (!string.IsNullOrEmpty(finalAudioUrl) && finalAudioUrl != audio.AudioUrl)
+            {
+                await _audioService.DeleteAudioFileAsync(audio.AudioUrl);
+            }
+
+            audio.AudioUrl = finalAudioUrl ?? audio.AudioUrl;
+            audio.TranscriptText = finalTranscript;
             audio.LanguageCode = updated.LanguageCode;
 
             await _context.SaveChangesAsync();

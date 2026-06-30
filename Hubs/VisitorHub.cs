@@ -23,7 +23,7 @@ namespace TourGuideApp.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            if (Context.Items.TryGetValue("IsVisitor", out var isVisitor) && (bool)isVisitor)
+            if (Context.Items.TryGetValue("IsVisitor", out var isVisitor) && isVisitor is true)
             {
                 Interlocked.Decrement(ref _visitorCount);
                 await Clients.All.SendAsync("UpdateVisitorCount", _visitorCount);

@@ -352,7 +352,12 @@
     <div class="login-box">
       <h2>Yêu cầu đăng nhập</h2>
       <p>Chỉ quản trị viên mới được truy cập trang này</p>
-      <a href="/index.html" class="btn">Đăng nhập Admin</a>
+      <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+        <input type="text" id="admin-username" placeholder="Tên đăng nhập" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+        <input type="password" id="admin-password" placeholder="Mật khẩu" required style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+        <button type="submit" class="btn" style="width:100%;">Đăng nhập</button>
+      </form>
+      <p id="login-error" style="color:red;margin-top:10px;display:none;"></p>
     </div>
   </div>
 
@@ -398,7 +403,6 @@
             <th>Tọa độ</th>
             <th>Bán kính</th>
             <th>Priority</th>
-            <th>Audio đã gán</th>
             <th></th>
           </tr>
         </thead>
@@ -491,12 +495,68 @@
             <th>Loại tài khoản</th>
             <th>Tên Quán (Vendor)</th>
             <th>Ngày tạo</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
           <!-- Dữ liệu User sẽ được tải bằng JS -->
         </tbody>
       </table>
+
+      <!-- Form tạo Vendor mới -->
+      <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <h3 style="margin: 0 0 12px; font-size: 1rem; color: var(--primary-dark);">Tạo tài khoản Vendor mới</h3>
+        <form id="create-vendor-form" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+          <div class="field">
+            <label>Tên đăng nhập</label>
+            <input type="text" id="new-vendor-username" required>
+          </div>
+          <div class="field">
+            <label>Mật khẩu</label>
+            <input type="password" id="new-vendor-password" required minlength="6">
+          </div>
+          <div class="field">
+            <label>Tên cửa hàng</label>
+            <input type="text" id="new-vendor-storename" required>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="new-vendor-email">
+          </div>
+          <button type="submit" class="btn">Tạo Vendor</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ 6. GIÁM SÁT HỆ THỐNG ============ -->
+    <section>
+      <h2>6. Giám sát hệ thống</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #2e7d32;" id="stat-pois">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Tổng POIs</div>
+        </div>
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #1565c0;" id="stat-vendors">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Vendors</div>
+        </div>
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #e65100;" id="stat-listens">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Tổng lượt nghe</div>
+        </div>
+        <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; font-weight: bold; color: #c2185b;" id="stat-users">0</div>
+          <div style="font-size: 0.85rem; color: #666;">Khách hàng</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <h3 style="font-size: 1rem; margin-bottom: 10px;">Hoạt động gần đây</h3>
+        <div id="activity-log" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
+          <p style="color: var(--muted);">Đang tải...</p>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 6. QUẢN LÝ ĐÁNH GIÁ (REVIEWS) ============ -->
@@ -631,16 +691,67 @@
       window.location.href = '/index.html';
     }
 
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('admin-username').value.trim();
+      const password = document.getElementById('admin-password').value;
+      const errorMsg = document.getElementById('login-error');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          document.getElementById('login-overlay').classList.remove('active');
+          document.querySelector('main').style.display = 'block';
+          document.getElementById('user-info').style.display = 'flex';
+          document.getElementById('username-display').textContent = `👤 ${data.user.username} (Admin)`;
+        } else {
+          errorMsg.textContent = data.message || 'Đăng nhập thất bại';
+          errorMsg.style.display = 'block';
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Lỗi kết nối server';
+        errorMsg.style.display = 'block';
+      }
+    }
+
     function getAuthHeaders() {
       const token = localStorage.getItem('token');
       return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
-    // Kiểm tra đăng nhập trước khi load
-    if (!checkAuth()) {
-      // Ẩn main content
-      document.querySelector('main').style.display = 'none';
-    }
+    // Kiểm tra đăng nhập khi DOM ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      const isAuth = checkAuth();
+      if (!isAuth) {
+        document.querySelector('main').style.display = 'none';
+      } else {
+        // Verify token với server (chỉ logout khi 401)
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: getAuthHeaders()
+          });
+          if (res.status === 401) {
+            logout();
+            return;
+          }
+        } catch (e) {
+          // Server có thể đang restart, giữ nguyên localStorage
+        }
+        // Load data sau khi auth thành công
+        loadUsers();
+        loadSystemStats();
+        loadActivityLog();
+      }
+    });
 
     let pois = [];
 
@@ -659,11 +770,17 @@
       fetch(`${API_BASE}/api/POI`)
         .then(res => res.json())
         .then(data => {
-          pois = data; // Lưu vào biến toàn cục để dùng cho form sửa
+          pois = data;
           renderPoiTable(pois);
-          renderPoiSelects(pois);
+          renderPoiSelect(pois);
         })
         .catch(err => console.error("Lỗi tải POI:", err));
+    }
+
+    function renderPoiSelect(pois) {
+      const select = document.getElementById('edit-poi-select');
+      select.innerHTML = '<option value="">-- Chọn POI --</option>' +
+        pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
     }
 
     function renderPoiTable(pois) {
@@ -673,17 +790,12 @@
       pois.forEach(poi => {
         const tr = document.createElement('tr');
 
-        const audioTags = (poi.audios || [])
-          .map(a => `<span class="audio-tag">${a.languageCode}<button class="audio-remove-btn" data-audio-id="${a.id}" title="Xóa audio ${a.languageCode}">×</button></span>`)
-          .join('') || '<span style="color:#aaa">Chưa có audio</span>';
-
         tr.innerHTML = `
         <td>${poi.id}</td>
         <td>${poi.name}</td>
         <td>${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}</td>
         <td>${poi.radius} m</td>
         <td>${poi.priority}</td>
-        <td>${audioTags}</td>
         <td>
         <button class="btn btn-danger" data-id="${poi.id}">Xóa</button>
         <button class="btn" data-edit="${poi.id}">Sửa</button>
@@ -696,12 +808,6 @@
         btn.addEventListener('click', () => deletePoi(btn.dataset.id));
       });
 
-      tbody.querySelectorAll('button[data-audio-id]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          deleteAudio(btn.dataset.audioId);
-        });
-      });
       // === SỬA: Nút "Sửa" trong bảng - điền dữ liệu vào form sửa ===
       tbody.querySelectorAll('button[data-edit]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -812,32 +918,6 @@
         .catch(err => console.error("Lỗi POST POI:", err));
     });
 
-    // ====== FORM GÁN AUDIO ======
-    document.getElementById('audio-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const newAudio = {
-        poiId: parseInt(document.getElementById('audio-poi-id').value),
-        languageCode: document.getElementById('audio-lang').value,
-        audioUrl: document.getElementById('audio-url').value,
-        transcriptText: document.getElementById('audio-transcript').value
-      };
-
-      fetch(`${API_BASE}/api/audios`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(newAudio)
-      })
-        .then(res => {
-          if (res.ok) {
-            alert("Gán audio thành công!");
-            e.target.reset();
-            loadPois();
-          } else {
-            return res.json().then(data => alert("Lỗi: " + (data.message || "không gán được audio")));
-          }
-        })
-        .catch(err => console.error("Lỗi POST Audio:", err));
-    });
     // Khi chọn POI trong dropdown sửa, điền dữ liệu vào form
     document.getElementById('edit-poi-select').addEventListener('change', (e) => {
       const id = e.target.value;
@@ -1008,6 +1088,8 @@
             <td>${roleLabel}</td>
             <td>${user.storeName || '-'}</td>
             <td>${date}</td>
+            <td>${statusBadge}</td>
+            <td>${actionBtn}</td>
           `;
             tbody.appendChild(tr);
           });
@@ -1119,6 +1201,34 @@
       loadReviews();
       loadApprovals();
     }
+
+    // Load activity log
+    function loadActivityLog() {
+      const logContainer = document.getElementById('activity-log');
+      fetch(`${API_BASE}/api/listenhistory?limit=10`, {
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.length === 0) {
+            logContainer.innerHTML = '<p style="color: var(--muted);">Chưa có hoạt động nào.</p>';
+            return;
+          }
+          logContainer.innerHTML = data.slice(0, 10).map(item => {
+            const time = new Date(item.listenedAt || item.createdAt).toLocaleString('vi-VN');
+            return `<div style="padding:8px 0;border-bottom:1px solid #eee;">
+              <span style="color:#666;font-size:0.8rem;">${time}</span>
+              <span> • </span>
+              <span>POI #${item.poiId}</span>
+              <span style="color:#888;">(${item.language || 'vi'})</span>
+            </div>`;
+          }).join('');
+        })
+        .catch(() => {
+          logContainer.innerHTML = '<p style="color: var(--muted);">Không thể tải log.</p>';
+        });
+    }
+
   </script>
 
 

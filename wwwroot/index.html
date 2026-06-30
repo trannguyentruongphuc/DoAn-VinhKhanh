@@ -139,6 +139,118 @@
   }
   .btn:hover { background: var(--primary-dark); }
 
+  #now-playing .action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #now-playing .action-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .action-btn-directions { background: #3498db; color: #fff; }
+  .action-btn-share { background: #27ae60; color: #fff; }
+  .action-btn-save { background: #f39c12; color: #fff; }
+
+  /* History section */
+  #history-section {
+    margin: 12px 16px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  #history-section h3 { margin: 0 0 10px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  .history-item {
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .history-item:hover { background: #e9ecef; }
+  .history-item:last-child { margin-bottom: 0; }
+  .history-item .name { font-weight: 500; font-size: 0.9rem; }
+  .history-item .time { font-size: 0.75rem; color: var(--muted); }
+
+  /* Proximity notification toast */
+  #proximity-toast {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c3e50;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 25px;
+    z-index: 2000;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease;
+  }
+  #proximity-toast.show { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* Search bar */
+  #search-bar {
+    margin: 10px 16px;
+    position: relative;
+  }
+  #search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.95rem;
+    background: var(--card-bg);
+  }
+  #search-input:focus { outline: none; border-color: var(--primary); }
+  #search-bar::before {
+    content: "🔍";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+  }
+  #search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  #search-results.active { display: block; }
+  .search-result-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .search-result-item:hover { background: #f8f9fa; }
+  .search-result-item:last-child { border-bottom: none; }
+
   footer {
     text-align: center;
     color: var(--muted);
@@ -375,6 +487,15 @@
 
 <div id="status-bar">Đang chờ định vị GPS...</div>
 
+<!-- Proximity Toast Notification -->
+<div id="proximity-toast"></div>
+
+<!-- Search Bar -->
+<div id="search-bar">
+  <input type="text" id="search-input" placeholder="Tìm kiếm điểm tham quan...">
+  <div id="search-results"></div>
+</div>
+
 <div id="map">
   <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;text-align:center;z-index:1000;">
     <div style="font-size:24px;">🗺️</div>
@@ -413,6 +534,12 @@
   <div id="qr-reader"></div>
 </div>
 
+<!-- Lịch sử đã tham quan -->
+<div id="history-section">
+  <h3>📜 Điểm đã tham quan</h3>
+  <div id="history-list">Chưa có điểm nào được tham quan.</div>
+</div>
+
 <footer>Đồ án môn C# — Thuyết minh tự động đa ngôn ngữ phố ẩm thực Vĩnh Khánh</footer>
 
 <script>
@@ -420,11 +547,6 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' 
 
 // ====== AUTH FUNCTIONS (Global - outside DOMContentLoaded) ======
 function openAuthModal(tab) {
-  document.getElementById('auth-modal').classList.add('active');
-  switchTab(tab);
-}
-
-function closeAuthModal() {
   document.getElementById('auth-modal').classList.remove('active');
 }
 
@@ -606,27 +728,49 @@ function updateAuthUI() {
 window.addEventListener('DOMContentLoaded', function() {
     const mapContainer = document.getElementById('map');
     
-    // Force container có kích thước
-    mapContainer.style.height = '60vh';
-    mapContainer.style.minHeight = '300px';
-    mapContainer.style.width = '100%';
-    mapContainer.style.display = 'block';
-    
+    // Đảm bảo container có kích thước TRƯỚC khi tạo map
+    const mapRect = mapContainer.getBoundingClientRect();
+    if (mapRect.width === 0 || mapRect.height === 0) {
+      console.warn('Map container chưa có kích thước, đợi resize...');
+      mapContainer.style.height = '60vh';
+      mapContainer.style.minHeight = '350px';
+    }
+
     // Khởi tạo map
     const map = L.map('map', {
       center: [10.7595, 106.6965],
       zoom: 17,
-      preferCanvas: true
+      preferCanvas: false,
+      zoomControl: true,
+      attributionControl: true
     });
-    
-    // Tile layer - dùng CartoDB (đáng tin cậy hơn ở Việt Nam)
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+
+    // Tile layer - dùng OpenStreetMap (đáng tin cậy nhất)
+    const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+      subdomains: 'abc'
+    }).on('tileerror', function(error, tile) {
+      console.warn('Tile load error, thử tile layer khác:', error);
+    }).addTo(map);
+
+    // Fallback tile layer - nếu OSM lỗi sẽ dùng CartoDB
+    const fallbackTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
       maxZoom: 19,
       subdomains: 'abcd'
-    }).on('tileerror', function(error) {
-      console.error('Tile load error:', error);
-    }).addTo(map);
+    });
+
+    // Theo dõi lỗi tile và chuyển sang fallback nếu cần
+    let tileErrorCount = 0;
+    tileLayer.on('tileerror', function() {
+      tileErrorCount++;
+      if (tileErrorCount >= 3) {
+        console.warn('OSM tiles liên tục lỗi, chuyển sang CartoDB...');
+        map.removeLayer(tileLayer);
+        fallbackTileLayer.addTo(map);
+      }
+    });
 
     console.log('Map initialized at Vinh Khanh, Q4, TP.HCM');
 
@@ -706,6 +850,89 @@ window.addEventListener('DOMContentLoaded', function() {
   let cooldownActive = false;
   const COOLDOWN_MS = 30000; // 30 giây, có thể chỉnh khi demo
 
+  // ====== LỊCH SỬ THAM QUAN ======
+  const HISTORY_KEY = 'tourguide_history';
+  function getHistory() {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  }
+  function addToHistory(poi) {
+    const history = getHistory();
+    const existing = history.findIndex(h => h.id === poi.id);
+    if (existing !== -1) history.splice(existing, 1);
+    history.unshift({ id: poi.id, name: poi.name, time: new Date().toISOString() });
+    if (history.length > 20) history.pop();
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    renderHistory();
+  }
+  function renderHistory() {
+    const history = getHistory();
+    const container = document.getElementById('history-list');
+    if (history.length === 0) {
+      container.innerHTML = 'Chưa có điểm nào được tham quan.';
+      return;
+    }
+    container.innerHTML = history.slice(0, 5).map(h => `
+      <div class="history-item" onclick="window.playPoiById(${h.id})">
+        <div class="name">📍 ${h.name}</div>
+        <div class="time">${new Date(h.time).toLocaleString('vi-VN')}</div>
+      </div>
+    `).join('');
+  }
+
+  // ====== TOAST NOTIFICATION ======
+  function showToast(message) {
+    const toast = document.getElementById('proximity-toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // ====== RUNG/ÂM BÁO ======
+  let lastNotifiedPoiId = null;
+
+  function vibrateDevice() {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
+  }
+
+  function playAlertSound() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  }
+
+  // ====== TÌM KIẾM POI ======
+  function initSearch() {
+    const input = document.getElementById('search-input');
+    const results = document.getElementById('search-results');
+    input.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      if (!query || !window.allPois) {
+        results.classList.remove('active');
+        return;
+      }
+      const matches = window.allPois.filter(p => p.name.toLowerCase().includes(query));
+      if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Không tìm thấy</div>';
+      } else {
+        results.innerHTML = matches.map(p => `
+          <div class="search-result-item" onclick="window.playPoiById(${p.id}); results.classList.remove('active'); input.value = '';">
+            📍 ${p.name}
+          </div>
+        `).join('');
+      }
+      results.classList.add('active');
+    });
+    input.addEventListener('blur', () => setTimeout(() => results.classList.remove('active'), 200));
+  }
+
   // ======== 7. PHÁT AUDIO HOẶC ĐỌC TTS ========
   const audioEl = document.getElementById('np-audio');
   
@@ -732,27 +959,32 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('np-title').textContent = poi.name;
     const textToSpeak = transcriptText || poi.description;
     document.getElementById('np-desc').textContent = textToSpeak;
-    
+
+    // Thêm nút hành động: (đã bỏ chỉ đường và chia sẻ)
+    const nowPlaying = document.getElementById('now-playing');
+    let actionRow = nowPlaying.querySelector('.action-row');
+    if (actionRow) actionRow.remove();
+
     if (audioUrl) {
       audioEl.style.display = 'block';
       audioEl.src = audioUrl;
       audioEl.play().catch(() => {/* trình duyệt có thể chặn autoplay, người dùng bấm play thủ công */});
     } else {
       audioEl.style.display = 'block';
-      
+
       // Sử dụng API Tts nội bộ của chúng ta để Google không thể chặn
       const ttsLang = currentLang === 'vi' ? 'vi' : currentLang;
       const internalTtsUrl = `${API_BASE}/api/Tts?text=${encodeURIComponent(textToSpeak)}&lang=${ttsLang}`;
-      
+
       audioEl.src = internalTtsUrl;
       audioEl.play().catch(e => {
         console.warn("Autoplay bị chặn, cần người dùng bấm Play thủ công:", e);
       });
     }
-    
+
     // --- ĐOẠN CODE BẮN TÍN HIỆU CỘNG ĐIỂM ---
-    fetch(`${API_BASE}/api/Analytics/increment/${poi.id}?lang=${currentLang}`, { 
-        method: 'POST' 
+    fetch(`${API_BASE}/api/Analytics/increment/${poi.id}?lang=${currentLang}`, {
+        method: 'POST'
     })
     .then(res => console.log(`Đã gửi thống kê: Điểm #${poi.id}, Tiếng: ${currentLang}`))
     .catch(err => console.error("Lỗi gửi thống kê:", err));
@@ -791,6 +1023,8 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 
   // ====== 5. GỌI API GEOFENCE THEO GPS THỜI GIAN THỰC ======
+  const PROXIMITY_NOTIFY_DISTANCE = 100; // Thông báo khi còn 100m
+
   function checkLocation(lat, lng) {
     fetch(`${API_BASE}/api/location/check?lat=${lat}&lng=${lng}&lang=${currentLang}`)
       .then(res => {
@@ -799,12 +1033,52 @@ window.addEventListener('DOMContentLoaded', function() {
       })
       .then(data => {
         if (data.triggered) {
+          // Khi vào vùng POI -> phát audio + rung
+          vibrateDevice();
+          playAlertSound();
           triggerAudio(data, { overrideCooldown: false });
         } else {
+          // Kiểm tra nếu đang tiến gần POI (để hiện thông báo "Sắp đến nơi")
+          if (window.allPois && window.allPois.length > 0) {
+            checkProximity(lat, lng);
+          }
           document.getElementById('status-bar').textContent = I18N[currentLang].outRange;
         }
       })
       .catch(err => console.error("Lỗi gọi API location/check:", err));
+  }
+
+  // Kiểm tra khoảng cách đến POIs gần nhất
+  function checkProximity(lat, lng) {
+    if (!window.allPois) return;
+    window.allPois.forEach(poi => {
+      const distance = getDistanceFromLatLng(lat, lng, poi.lat, poi.lng);
+      const key = `proximity_${poi.id}`;
+      if (distance <= PROXIMITY_NOTIFY_DISTANCE && lastNotifiedPoiId !== poi.id) {
+        // Thông báo đang tiến vào
+        const langMsg = {
+          vi: `Đang tiến vào: ${poi.name} (${Math.round(distance)}m)`,
+          en: `Approaching: ${poi.name} (${Math.round(distance)}m)`,
+          ko: `가까워지고 있습니다: ${poi.name} (${Math.round(distance)}m)`,
+          zh: `正在接近: ${poi.name} (${Math.round(distance)}m)`
+        };
+        showToast(langMsg[currentLang] || langMsg.vi);
+        lastNotifiedPoiId = poi.id;
+        vibrateDevice();
+      }
+    });
+  }
+
+  // Tính khoảng cách Haversine
+  function getDistanceFromLatLng(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Bán kính trái đất (m)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   if (navigator.geolocation) {
@@ -1020,15 +1294,8 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Initialize auth UI and event listeners on page load
-  updateAuthUI();
-
-  // Close modal when clicking outside
-  document.getElementById('auth-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'auth-modal') {
-      closeAuthModal();
-    }
-  });
+  initSearch();
+  renderHistory();
 
   // Đăng ký Service Worker cho PWA
   if ('serviceWorker' in navigator) {
@@ -1038,8 +1305,6 @@ window.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-
-  }); // End DOMContentLoaded
 
   // ====== 9. SIGNALR TRACKING ======
   const visitorConnection = new signalR.HubConnectionBuilder()

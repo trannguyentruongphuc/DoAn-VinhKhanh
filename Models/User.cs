@@ -28,6 +28,9 @@ namespace TourGuideApp.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // Trạng thái tài khoản (Admin có thể khóa/mở khóa)
+        public bool IsActive { get; set; } = true;
+
         // Navigation property
         [JsonIgnore]
         public List<POI>? OwnedPOIs { get; set; }
