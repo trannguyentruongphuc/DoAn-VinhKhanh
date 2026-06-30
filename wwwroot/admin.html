@@ -8,15 +8,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #c0392b;
       --primary-dark: #962d22;
-      --bg: #f5f5f5;
+      --primary-light: #fdedec;
+      --bg: #f4f7fa;
       --card-bg: #ffffff;
-      --text: #2c2c2c;
-      --muted: #777;
-      --border: #e0e0e0;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --sidebar-width: 250px;
+      --header-height: 60px;
     }
 
     * {
@@ -31,150 +35,242 @@
 
     body {
       margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
+      font-family: "Inter", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .dashboard-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: #111827;
+      color: #f3f4f6;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar h1 {
+      font-size: 1.25rem;
+      padding: 0 20px 20px;
+      margin: 0;
+      border-bottom: 1px solid #374151;
+      color: #fff;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      padding: 20px 0;
+      margin: 0;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sidebar-menu li a {
+      display: block;
+      padding: 12px 20px;
+      color: #d1d5db;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .sidebar-menu li a:hover,
+    .sidebar-menu li a.active {
+      background: #1f2937;
+      color: #fff;
+      border-left: 4px solid var(--primary);
+    }
+
+    /* Main Content */
+    .main-wrapper {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
 
     header {
-      background: var(--primary);
-      color: #fff;
-      padding: 16px 20px;
+      height: var(--header-height);
+      background: var(--card-bg);
+      padding: 0 30px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 1.2rem;
+    header .header-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
     }
 
     header .user-info {
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-
-    header .user-info span {
-      font-size: 0.9rem;
+      gap: 15px;
     }
 
     header .logout-btn {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      padding: 6px 12px;
+      background: #f3f4f6;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.2s;
     }
 
     header .logout-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: #e5e7eb;
     }
 
     main {
-      max-width: 1000px;
+      padding: 30px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 20px;
+      width: 100%;
     }
 
     section {
       background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     }
 
     section h2 {
       margin-top: 0;
-      font-size: 1.05rem;
-      color: var(--primary-dark);
+      font-size: 1.25rem;
+      color: var(--text);
       border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+      font-weight: 600;
     }
 
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+    }
+    
     table {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.9rem;
     }
 
-    th,
-    td {
+    th, td {
       text-align: left;
-      padding: 8px 10px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
     }
 
     th {
-      background: #faf3f2;
-      color: var(--primary-dark);
+      background: #f9fafb;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
     }
 
-    tr:hover {
-      background: #fafafa;
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #f9fafb;
     }
 
     .audio-tag {
       display: inline-block;
-      background: #eef;
-      color: #334;
-      border-radius: 4px;
-      padding: 2px 6px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border-radius: 999px;
+      padding: 4px 10px;
       font-size: 0.75rem;
+      font-weight: 500;
       margin-right: 4px;
+      margin-bottom: 4px;
     }
 
     .audio-remove-btn {
       background: none;
       border: none;
-      color: #966;
+      color: var(--primary);
       cursor: pointer;
       font-size: 0.85rem;
       line-height: 1;
-      margin-left: 4px;
+      margin-left: 6px;
       padding: 0;
     }
 
-    .audio-remove-btn:hover {
-      color: #c0392b;
-    }
-
+    /* Forms & Buttons */
     form {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 15px;
       align-items: flex-end;
     }
 
     .field {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      font-size: 0.82rem;
-      color: var(--muted);
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
     }
 
-    input,
-    select {
-      padding: 7px 9px;
+    input, select {
+      padding: 10px 14px;
       border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.88rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
     }
 
     .btn {
       background: var(--primary);
       color: #fff;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.88rem;
-      height: 36px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .btn:hover {
@@ -182,29 +278,34 @@
     }
 
     .btn-danger {
-      background: #888;
+      background: #ef4444;
     }
-
     .btn-danger:hover {
-      background: #666;
+      background: #dc2626;
     }
 
+    .btn-success {
+      background: #10b981;
+    }
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    /* Charts */
     #chart-section canvas {
       max-width: 100%;
     }
-
     #chart-placeholder {
-      color: var(--muted);
-      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 20px;
     }
 
     /* Login overlay */
     #login-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: var(--bg);
       display: none;
       align-items: center;
@@ -218,37 +319,29 @@
 
     .login-box {
       background: var(--card-bg);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
       padding: 40px;
       width: 100%;
-      max-width: 360px;
+      max-width: 380px;
       text-align: center;
     }
 
     .login-box h2 {
-      margin: 0 0 8px;
-      color: var(--primary);
+      margin: 0 0 10px;
+      color: var(--text);
+      font-size: 1.5rem;
     }
 
     .login-box p {
-      color: var(--muted);
-      margin: 0 0 24px;
-    }
-
-    .login-box input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 16px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
+      color: var(--text-muted);
+      margin: 0 0 30px;
+      font-size: 0.95rem;
     }
 
     .login-box .btn {
       width: 100%;
-      height: auto;
-      padding: 14px;
+      padding: 12px;
     }
   </style>
 </head>
@@ -263,22 +356,39 @@
     </div>
   </div>
 
-  <header>
-    <h1>🛠️ Trang quản trị — Vĩnh Khánh Tour Guide</h1>
-    <div class="user-info" id="user-info" style="display:none;">
-      <span id="live-visitors-badge" style="background:#f1c40f;color:#333;padding:4px 8px;border-radius:4px;font-weight:bold;font-size:0.9rem;margin-right:15px;display:inline-flex;align-items:center;gap:4px;">
-        <span style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span>
-        Live: 0 thiết bị
-      </span>
-      <span id="username-display"></span>
-      <button class="logout-btn" onclick="logout()">Đăng xuất</button>
-    </div>
-  </header>
+  <div class="dashboard-layout">
+    <nav class="sidebar">
+      <h1>🛠️ Admin Tour Guide</h1>
+      <ul class="sidebar-menu">
+        <li><a href="#poi-section" class="active">📍 Quản lý POI</a></li>
+        <li><a href="#add-poi-section">➕ Thêm/Sửa POI</a></li>
+        <li><a href="#audio-section">🔊 Gán Audio</a></li>
+        <li><a href="#chart-section">📈 Thống kê</a></li>
+        <li><a href="#users-section">👥 Người dùng</a></li>
+        <li><a href="#reviews-section">💬 Đánh giá</a></li>
+        <li><a href="#approvals-section">📝 Duyệt quyền</a></li>
+      </ul>
+    </nav>
 
-  <main>
+    <div class="main-wrapper">
+      <header>
+        <div class="header-title">Trang Quản Trị Hệ Thống</div>
+        <div class="user-info" id="user-info" style="display:none;">
+          <span id="live-visitors-badge"
+            style="background:#f1c40f;color:#333;padding:4px 8px;border-radius:4px;font-weight:bold;font-size:0.9rem;margin-right:15px;display:inline-flex;align-items:center;gap:4px;">
+            <span
+              style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span>
+            Live: 0 thiết bị
+          </span>
+          <span id="username-display"></span>
+          <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+        </div>
+      </header>
 
-    <!-- ============ 1. DANH SÁCH POI + AUDIO ============ -->
-    <section>
+      <main>
+
+        <!-- ============ 1. DANH SÁCH POI + AUDIO ============ -->
+        <section id="poi-section">
       <h2>1. Danh sách điểm tham quan (POI)</h2>
       <table id="poi-table">
         <thead>
@@ -297,7 +407,7 @@
     </section>
 
     <!-- ============ 2. FORM THÊM POI MỚI ============ -->
-    <section>
+    <section id="add-poi-section">
       <h2>2. Thêm điểm tham quan mới</h2>
       <form id="poi-form">
         <div class="field"><label>Tên</label><input type="text" id="poi-name" required></div>
@@ -311,7 +421,7 @@
     </section>
 
 
-    <section>
+    <section id="edit-poi-section">
       <h2>2b. Sửa điểm tham quan</h2>
       <form id="edit-poi-form">
         <div class="field"><label>POI cần sửa</label>
@@ -330,7 +440,7 @@
     </section>
 
     <!-- ============ 3. FORM GÁN AUDIO ĐA NGÔN NGỮ CHO POI ============ -->
-    <section>
+    <section id="audio-section">
       <h2>3. Gán Audio (theo ngôn ngữ) cho một điểm</h2>
       <form id="audio-form">
         <div class="field">
@@ -352,10 +462,10 @@
         </div>
         <div class="form-group" style="flex:2">
           <label>Nội dung transcript</label>
-          <textarea id="audio-transcript" rows="3" placeholder="Nhập bản dịch hoặc nội dung thuyết minh ở đây..."></textarea>
+          <textarea id="audio-transcript" rows="3"
+            placeholder="Nhập bản dịch hoặc nội dung thuyết minh ở đây..."></textarea>
         </div>
-      </div>
-      <button type="submit" class="btn">Gán / Cập nhật Audio</button>
+        <button type="submit" class="btn">Gán / Cập nhật Audio</button>
       </form>
     </section>
 
@@ -370,7 +480,7 @@
     </section>
 
     <!-- ============ 5. QUẢN LÝ NGƯỜI DÙNG ============ -->
-    <section>
+    <section id="users-section">
       <h2>5. Quản lý Khách hàng & Đối tác</h2>
       <table id="user-table">
         <thead>
@@ -388,7 +498,50 @@
         </tbody>
       </table>
     </section>
-  </main>
+
+    <!-- ============ 6. QUẢN LÝ ĐÁNH GIÁ (REVIEWS) ============ -->
+    <section id="reviews-section">
+      <h2>6. Quản lý Đánh giá (Reviews)</h2>
+      <table id="review-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Tài khoản</th>
+            <th>Địa điểm (POI)</th>
+            <th>Số sao</th>
+            <th>Bình luận</th>
+            <th>Ngày tạo</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dữ liệu Review sẽ được tải bằng JS -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 7. QUẢN LÝ DUYỆT QUYỀN (APPROVALS) ============ -->
+    <section id="approvals-section">
+      <h2>7. Duyệt quyền Chủ quán (Vendor)</h2>
+      <table id="approval-table">
+        <thead>
+          <tr>
+            <th>ID Yêu cầu</th>
+            <th>Tài khoản</th>
+            <th>Tên cửa hàng</th>
+            <th>Địa chỉ</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dữ liệu Approval sẽ được tải bằng JS -->
+        </tbody>
+      </table>
+    </section>
+      </main>
+    </div>
+  </div>
 
   <script>
     // Tự nhận diện địa chỉ server dựa theo hostname đang mở trang web.
@@ -396,6 +549,53 @@
 
     // ====== KIỂM TRA ĐĂNG NHẬP ======
     function checkAuth() {
+      // Lấy tên admin để hiển thị
+      document.addEventListener('DOMContentLoaded', () => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          try {
+            const userObj = JSON.parse(userStr);
+            document.getElementById('username-display').innerText = userObj.username;
+          } catch (e) { }
+        }
+        
+        // Sidebar scroll spy
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.sidebar-menu a');
+
+        window.addEventListener('scroll', () => {
+          let current = '';
+          sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (pageYOffset >= sectionTop - 100) {
+              current = section.getAttribute('id');
+            }
+          });
+
+          navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${current}`) {
+              link.classList.add('active');
+            }
+          });
+        });
+        
+        // Smooth scrolling cho sidebar links
+        navLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetSection = document.getElementById(targetId);
+            if (targetSection) {
+              window.scrollTo({
+                top: targetSection.offsetTop - 80,
+                behavior: 'smooth'
+              });
+            }
+          });
+        });
+      });
+
       const token = localStorage.getItem('token');
       const user = localStorage.getItem('user');
 
@@ -547,7 +747,7 @@
       const editSelect = document.getElementById('edit-poi-select');
       editSelect.innerHTML = '<option value="">-- Chọn POI --</option>' +
         pois.map(p => `<option value="${p.id}">#${p.id} - ${p.name}</option>`).join('');
-        
+
       updateAudioForm();
     }
 
@@ -745,9 +945,9 @@
                 y: {
                   beginAtZero: true,
                   suggestedMax: 150, // Nâng cột mốc lên 150
-                  ticks: { 
+                  ticks: {
                     precision: 0 // Đảm bảo luôn hiển thị số nguyên (không có số lẻ)
-                  } 
+                  }
                 }
               }
             }
@@ -764,44 +964,44 @@
 
     // ====== SIGNALR LIVE TRACKING ======
     const visitorConnection = new signalR.HubConnectionBuilder()
-        .withUrl(API_BASE + "/visitorHub")
-        .withAutomaticReconnect()
-        .build();
+      .withUrl(API_BASE + "/visitorHub")
+      .withAutomaticReconnect()
+      .build();
 
-    visitorConnection.on("UpdateVisitorCount", function(count) {
-        document.getElementById("live-visitors-badge").innerHTML = `
+    visitorConnection.on("UpdateVisitorCount", function (count) {
+      document.getElementById("live-visitors-badge").innerHTML = `
           <span style="display:inline-block;width:8px;height:8px;background:red;border-radius:50%;animation:blink 1s infinite;"></span>
           Live: ${count} thiết bị đang truy cập
         `;
     });
 
     visitorConnection.start()
-        .then(() => visitorConnection.invoke("GetCurrentCount"))
-        .catch(err => console.error("SignalR Error:", err));
+      .then(() => visitorConnection.invoke("GetCurrentCount"))
+      .catch(err => console.error("SignalR Error:", err));
 
     visitorConnection.onreconnected(() => {
-        visitorConnection.invoke("GetCurrentCount").catch(console.error);
+      visitorConnection.invoke("GetCurrentCount").catch(console.error);
     });
 
     // ====== QUẢN LÝ NGƯỜI DÙNG ======
     function loadUsers() {
-      fetch(`${API_BASE}/api/auth/users`, {
+      fetch(`${API_BASE}/api/admin/users`, {
         headers: { ...getAuthHeaders() }
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Chỉ Admin mới có quyền xem danh sách này");
-        return res.json();
-      })
-      .then(users => {
-        const tbody = document.querySelector('#user-table tbody');
-        tbody.innerHTML = '';
-        users.forEach(user => {
-          const tr = document.createElement('tr');
-          const date = new Date(user.createdAt).toLocaleString('vi-VN');
-          const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>` 
-                          : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>` 
-                          : `User`;
-          tr.innerHTML = `
+        .then(res => {
+          if (!res.ok) throw new Error("Chỉ Admin mới có quyền xem danh sách này");
+          return res.json();
+        })
+        .then(users => {
+          const tbody = document.querySelector('#user-table tbody');
+          tbody.innerHTML = '';
+          users.forEach(user => {
+            const tr = document.createElement('tr');
+            const date = new Date(user.createdAt).toLocaleString('vi-VN');
+            const roleLabel = user.role === 'Admin' ? `<span style="color:red;font-weight:bold">Admin</span>`
+              : user.role === 'Vendor' ? `<span style="color:blue;font-weight:bold">Vendor</span>`
+                : `User`;
+            tr.innerHTML = `
             <td>#${user.id}</td>
             <td><strong>${user.username}</strong></td>
             <td>${user.email || '-'}</td>
@@ -809,18 +1009,115 @@
             <td>${user.storeName || '-'}</td>
             <td>${date}</td>
           `;
-          tbody.appendChild(tr);
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => {
+          const tbody = document.querySelector('#user-table tbody');
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">${err.message}</td></tr>`;
         });
-      })
-      .catch(err => {
-        const tbody = document.querySelector('#user-table tbody');
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">${err.message}</td></tr>`;
-      });
     }
-    
-    // Khởi động load danh sách user khi vào trang
+
+    // ====== QUẢN LÝ ĐÁNH GIÁ ======
+    function loadReviews() {
+      fetch(`${API_BASE}/api/admin/reviews`, {
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => res.json())
+        .then(reviews => {
+          const tbody = document.querySelector('#review-table tbody');
+          tbody.innerHTML = '';
+          reviews.forEach(r => {
+            const tr = document.createElement('tr');
+            const date = new Date(r.createdAt).toLocaleString('vi-VN');
+            tr.innerHTML = `
+            <td>#${r.id}</td>
+            <td>${r.user ? r.user.username : `User #${r.userId}`}</td>
+            <td>${r.poi ? r.poi.name : `POI #${r.poiId}`}</td>
+            <td>${'⭐'.repeat(r.rating)}</td>
+            <td>${r.comment || ''}</td>
+            <td>${date}</td>
+            <td>
+              <button class="btn btn-danger" onclick="deleteReview(${r.id})">Xóa</button>
+            </td>
+          `;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => console.error("Lỗi tải reviews:", err));
+    }
+
+    function deleteReview(id) {
+      if (!confirm(`Bạn có chắc muốn xóa đánh giá #${id} này?`)) return;
+      fetch(`${API_BASE}/api/admin/reviews/${id}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => {
+          if (res.ok) {
+            alert('Xóa thành công');
+            loadReviews();
+          } else {
+            alert('Lỗi xóa đánh giá');
+          }
+        })
+        .catch(err => console.error("Lỗi DELETE review:", err));
+    }
+
+    // ====== QUẢN LÝ DUYỆT QUYỀN ======
+    function loadApprovals() {
+      fetch(`${API_BASE}/api/admin/approvals/registrations`, {
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => res.json())
+        .then(regs => {
+          const tbody = document.querySelector('#approval-table tbody');
+          tbody.innerHTML = '';
+          if (regs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Không có yêu cầu chờ duyệt nào.</td></tr>';
+            return;
+          }
+          regs.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td>#${r.id}</td>
+            <td>${r.user ? r.user.username : `User #${r.userId}`}</td>
+            <td><strong>${r.businessName}</strong></td>
+            <td>${r.businessAddress}</td>
+            <td><span style="color:orange;font-weight:bold">${r.status}</span></td>
+            <td>
+              <button class="btn" onclick="approveRegistration(${r.id})">Duyệt cấp quyền</button>
+            </td>
+          `;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => console.error("Lỗi tải approvals:", err));
+    }
+
+    function approveRegistration(id) {
+      if (!confirm(`Duyệt cấp quyền Vendor cho yêu cầu #${id}?`)) return;
+      fetch(`${API_BASE}/api/admin/approvals/registrations/${id}/approve`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders() }
+      })
+        .then(res => {
+          if (res.ok) {
+            alert('Duyệt thành công!');
+            loadApprovals();
+            loadUsers(); // Refresh danh sách user
+          } else {
+            alert('Lỗi duyệt yêu cầu');
+          }
+        })
+        .catch(err => console.error("Lỗi POST approve:", err));
+    }
+
+    // Khởi động load danh sách khi vào trang
     if (checkAuth()) {
       loadUsers();
+      loadReviews();
+      loadApprovals();
     }
   </script>
 

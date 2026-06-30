@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TourGuideApp.Data;
 
@@ -10,9 +11,11 @@ using TourGuideApp.Data;
 namespace TourGuideApp.Migrations
 {
     [DbContext(typeof(TourGuideContext))]
-    partial class TourGuideContextModelSnapshot : ModelSnapshot
+    [Migration("20260630142839_AddFavoritePoi")]
+    partial class AddFavoritePoi
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");

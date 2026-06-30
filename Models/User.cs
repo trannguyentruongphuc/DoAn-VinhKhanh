@@ -31,5 +31,14 @@ namespace TourGuideApp.Models
         // Navigation property
         [JsonIgnore]
         public List<POI>? OwnedPOIs { get; set; }
+
+        [JsonIgnore]
+        public ICollection<Review>? Reviews { get; set; }
+
+        [JsonIgnore]
+        public ICollection<FavoritePoi>? FavoritePois { get; set; }
+
+        [JsonIgnore]
+        public List<PoiOwnerRegistration>? PoiOwnerRegistrations { get; set; }
     }
 }

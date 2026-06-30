@@ -11,6 +11,13 @@ namespace TourGuideApp.Data
         public DbSet<Audio> Audios { get; set; } = null!;
         public DbSet<ListenHistory> ListenHistories { get; set; } = null!;
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Review> Reviews { get; set; } = null!;
+        public DbSet<Role> Roles { get; set; } = null!;
+        public DbSet<PoiLocalization> PoiLocalizations { get; set; } = null!;
+        public DbSet<DatasetVersion> DatasetVersions { get; set; } = null!;
+        public DbSet<PoiOwnerRegistration> PoiOwnerRegistrations { get; set; } = null!;
+        public DbSet<AudioTask> AudioTasks { get; set; } = null!;
+        public DbSet<FavoritePoi> FavoritePois { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,9 +39,56 @@ namespace TourGuideApp.Data
             // Quan hệ Vendor - POI: 1 Vendor có thể sở hữu nhiều POI
             modelBuilder.Entity<POI>()
                 .HasOne(p => p.Vendor)
-                .WithMany()
+                .WithMany(u => u.OwnedPOIs)
                 .HasForeignKey(p => p.VendorId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Quan hệ POI - Review
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.POI)
+                .WithMany(p => p.Reviews)
+                .HasForeignKey(r => r.POIId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Quan hệ POI - Localization
+            modelBuilder.Entity<PoiLocalization>()
+                .HasOne(l => l.POI)
+                .WithMany(p => p.Localizations)
+                .HasForeignKey(l => l.POIId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Quan hệ POI - AudioTask
+            modelBuilder.Entity<AudioTask>()
+                .HasOne(a => a.POI)
+                .WithMany(p => p.AudioTasks)
+                .HasForeignKey(a => a.POIId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Quan hệ User - PoiOwnerRegistration
+            modelBuilder.Entity<PoiOwnerRegistration>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.PoiOwnerRegistrations)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Quan hệ FavoritePoi - POI và User
+            modelBuilder.Entity<FavoritePoi>()
+                .HasOne(f => f.POI)
+                .WithMany(p => p.FavoritePois)
+                .HasForeignKey(f => f.POIId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FavoritePoi>()
+                .HasOne(f => f.User)
+                .WithMany(u => u.FavoritePois)
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // --- SEED DATA: dữ liệu mẫu cho phố ẩm thực Vĩnh Khánh (Q4, TP.HCM) ---
             modelBuilder.Entity<POI>().HasData(

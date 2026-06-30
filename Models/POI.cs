@@ -40,5 +40,15 @@ namespace TourGuideApp.Models
         // và để window.playPoiById() tìm đúng audio theo ngôn ngữ khi quét QR.
         // Chiều ngược lại (Audio.POI) vẫn giữ [JsonIgnore] để tránh JSON lặp vô hạn.
         public List<Audio> Audios { get; set; } = new List<Audio>();
+
+        public List<Review> Reviews { get; set; } = new List<Review>();
+        
+        [JsonIgnore]
+        public ICollection<PoiLocalization>? Localizations { get; set; }
+
+        [JsonIgnore]
+        public ICollection<FavoritePoi>? FavoritePois { get; set; }
+
+        public List<AudioTask> AudioTasks { get; set; } = new List<AudioTask>();
     }
 }

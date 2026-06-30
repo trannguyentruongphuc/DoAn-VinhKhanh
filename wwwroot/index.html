@@ -292,6 +292,65 @@
   </div>
 </div>
 
+<!-- Vendor Registration Modal -->
+<div class="modal-overlay" id="vendor-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('vendor-modal').classList.remove('active')">&times;</button>
+    <h2 style="margin: 0 0 20px; color: var(--primary); font-size: 1.3rem; text-align: center;">Đăng ký Chủ Quán</h2>
+    <form id="vendor-form" onsubmit="handleVendorSubmit(event)">
+      <div class="form-group">
+        <label>Tên cửa hàng</label>
+        <input type="text" id="vendor-name" required placeholder="Nhập tên quán">
+      </div>
+      <div class="form-group">
+        <label>Địa chỉ</label>
+        <input type="text" id="vendor-address" required placeholder="Địa chỉ kinh doanh">
+      </div>
+      <div class="form-group">
+        <label>Giấy phép kinh doanh (hoặc CMND)</label>
+        <input type="text" id="vendor-proof" required placeholder="Số giấy phép / minh chứng">
+      </div>
+      <button type="submit" class="btn" id="vendor-btn" style="width: 100%;">Gửi yêu cầu xét duyệt</button>
+    </form>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-overlay" id="review-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('review-modal').classList.remove('active')">&times;</button>
+    <h2 style="margin: 0 0 20px; color: var(--primary); font-size: 1.3rem; text-align: center;">Viết Đánh Giá</h2>
+    <form id="review-form" onsubmit="handleReviewSubmit(event)">
+      <div class="form-group">
+        <label>Đánh giá số sao (1-5)</label>
+        <select id="review-rating" required style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+          <option value="5">⭐⭐⭐⭐⭐ Tuyệt vời</option>
+          <option value="4">⭐⭐⭐⭐ Rất tốt</option>
+          <option value="3">⭐⭐⭐ Bình thường</option>
+          <option value="2">⭐⭐ Kém</option>
+          <option value="1">⭐ Rất tệ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bình luận</label>
+        <textarea id="review-comment" required placeholder="Chia sẻ trải nghiệm của bạn..." style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); min-height: 80px;"></textarea>
+      </div>
+      <button type="submit" class="btn" id="submit-review-btn" style="width: 100%;">Gửi đánh giá</button>
+    </form>
+  </div>
+</div>
+
+<!-- Favorites Modal -->
+<div class="modal-overlay" id="favorites-modal">
+  <div class="modal" style="max-height: 80vh; display: flex; flex-direction: column;">
+    <button class="modal-close" onclick="document.getElementById('favorites-modal').classList.remove('active')">&times;</button>
+    <h2 style="margin: 0 0 20px; color: #e91e63; font-size: 1.3rem; text-align: center;">❤️ Điểm Đã Lưu</h2>
+    <div id="favorites-list" style="overflow-y: auto; flex: 1;">
+      <!-- Danh sách yêu thích -->
+    </div>
+  </div>
+</div>
+
 <header>
   <h1>🍜 Vĩnh Khánh Tour Guide</h1>
   <div class="header-actions">
@@ -302,12 +361,13 @@
       <option value="zh">🇨🇳 中文</option>
     </select>
     <div id="auth-section">
-      <a href="#" class="auth-btn" onclick="openAuthModal('login')">Đăng nhập</a>
-      <a href="#" class="auth-btn" onclick="openAuthModal('register')">Đăng ký</a>
+      <button class="auth-btn" id="login-btn-top" onclick="openAuthModal('login')">Đăng nhập / Đăng ký</button>
     </div>
     <div id="user-section" style="display:none;align-items:center;gap:8px;">
       <span class="user-display" id="user-display"></span>
+      <button class="btn" style="background-color:#e91e63; color:white; border:none;" id="fav-list-btn" onclick="openFavoritesModal()">❤️ Đã lưu</button>
       <a href="/admin.html" class="auth-btn" id="admin-link" style="display:none;">Quản trị</a>
+      <a href="#" class="auth-btn" id="vendor-reg-btn" style="display:none;" onclick="openVendorModal()">Đăng ký Chủ Quán</a>
       <button class="auth-btn" onclick="logout()">Đăng xuất</button>
     </div>
   </div>
@@ -326,6 +386,19 @@
   <h3 id="np-title">—</h3>
   <p id="np-desc"></p>
   <audio id="np-audio" controls></audio>
+  
+  <div id="reviews-section" style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h4 style="margin: 0; color: var(--primary-dark);">Đánh giá & Bình luận</h4>
+      <div>
+        <button id="toggle-fav-btn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; display: none; background: white; color: #e91e63; border: 1px solid #e91e63; margin-right: 5px;" onclick="toggleFavorite()">🤍 Lưu</button>
+        <button id="write-review-btn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; display: none;" onclick="openReviewModal()">Viết đánh giá</button>
+      </div>
+    </div>
+    <div id="reviews-list" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
+      <!-- Danh sách review -->
+    </div>
+  </div>
 </div>
 
 <!--
@@ -486,6 +559,8 @@ function updateAuthUI() {
   const authSection = document.getElementById('auth-section');
   const userSection = document.getElementById('user-section');
   const adminLink = document.getElementById('admin-link');
+  const vendorBtn = document.getElementById('vendor-reg-btn');
+  const writeReviewBtn = document.getElementById('write-review-btn');
 
   if (token && user) {
     try {
@@ -497,17 +572,33 @@ function updateAuthUI() {
       if (adminLink) {
         adminLink.style.display = userData.role === 'Admin' ? 'inline-block' : 'none';
       }
+      if (vendorBtn) {
+        vendorBtn.style.display = userData.role === 'User' ? 'inline-block' : 'none';
+      }
+      if (writeReviewBtn) {
+        writeReviewBtn.style.display = 'inline-block';
+      }
+      
+      const favListBtn = document.getElementById('fav-list-btn');
+      if (favListBtn) favListBtn.style.display = 'inline-block';
+      
     } catch (e) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       authSection.style.display = 'flex';
       userSection.style.display = 'none';
       if (adminLink) adminLink.style.display = 'none';
+      if (vendorBtn) vendorBtn.style.display = 'none';
+      if (writeReviewBtn) writeReviewBtn.style.display = 'none';
+      if (favListBtn) favListBtn.style.display = 'none';
     }
   } else {
     authSection.style.display = 'flex';
     userSection.style.display = 'none';
     if (adminLink) adminLink.style.display = 'none';
+    if (vendorBtn) vendorBtn.style.display = 'none';
+    if (writeReviewBtn) writeReviewBtn.style.display = 'none';
+    if (favListBtn) favListBtn.style.display = 'none';
   }
 }
 
@@ -665,6 +756,10 @@ window.addEventListener('DOMContentLoaded', function() {
     })
     .then(res => console.log(`Đã gửi thống kê: Điểm #${poi.id}, Tiếng: ${currentLang}`))
     .catch(err => console.error("Lỗi gửi thống kê:", err));
+
+    // --- HIỂN THỊ REVIEWS VÀ FAVORITES CHO POI NÀY ---
+    loadPoiReviews(poi.id);
+    checkFavoriteStatus(poi.id);
   }
 
   // Hàm dùng chung: gọi khi GPS kích hoạt HOẶC khi quét QR (QR sẽ override cooldown)
@@ -960,6 +1055,209 @@ window.addEventListener('DOMContentLoaded', function() {
   visitorConnection.onreconnected(() => {
       visitorConnection.invoke("JoinAsVisitor").catch(console.error);
   });
+
+  // ====== 10. REVIEWS VÀ DUYỆT QUYỀN (PUBLIC) ======
+  let currentPoiForReview = null;
+
+  function loadPoiReviews(poiId) {
+    currentPoiForReview = poiId;
+    fetch(`${API_BASE}/api/public/reviews/poi/${poiId}`)
+      .then(res => res.json())
+      .then(reviews => {
+        const listEl = document.getElementById('reviews-list');
+        listEl.innerHTML = '';
+        if (reviews.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--muted); font-style:italic;">Chưa có đánh giá nào. Hãy là người đầu tiên!</div>';
+          return;
+        }
+        reviews.forEach(r => {
+          const date = new Date(r.createdAt).toLocaleDateString('vi-VN');
+          listEl.innerHTML += `
+            <div style="padding: 10px 0; border-bottom: 1px dashed var(--border);">
+              <div style="display: flex; justify-content: space-between;">
+                <strong>User #${r.userId}</strong>
+                <span style="color:var(--muted); font-size: 0.8rem;">${date}</span>
+              </div>
+              <div style="color: #f1c40f; font-size: 1.1rem; margin-bottom: 5px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+              <div>${r.comment || ''}</div>
+            </div>
+          `;
+        });
+      })
+      .catch(err => console.error("Lỗi tải reviews:", err));
+  }
+
+  function openReviewModal() {
+    if (!currentPoiForReview) return;
+    document.getElementById('review-modal').classList.add('active');
+  }
+
+  function handleReviewSubmit(e) {
+    e.preventDefault();
+    if (!currentPoiForReview) return;
+    
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (!token || !userStr) {
+      alert("Vui lòng đăng nhập trước khi đánh giá!");
+      return;
+    }
+    
+    const userId = JSON.parse(userStr).id;
+    const rating = parseInt(document.getElementById('review-rating').value);
+    const comment = document.getElementById('review-comment').value;
+
+    const btn = document.getElementById('submit-review-btn');
+    btn.disabled = true;
+
+    fetch(`${API_BASE}/api/public/reviews`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ poiId: currentPoiForReview, userId, rating, comment })
+    })
+    .then(res => {
+      if (res.ok) {
+        alert("Cảm ơn bạn đã đánh giá!");
+        document.getElementById('review-modal').classList.remove('active');
+        document.getElementById('review-form').reset();
+        loadPoiReviews(currentPoiForReview);
+      } else {
+        alert("Lỗi khi gửi đánh giá.");
+      }
+    })
+    .catch(err => console.error("Lỗi POST review:", err))
+    .finally(() => btn.disabled = false);
+  }
+
+  function openVendorModal() {
+    document.getElementById('vendor-modal').classList.add('active');
+  }
+
+  function handleVendorSubmit(e) {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const btn = document.getElementById('vendor-btn');
+    btn.disabled = true;
+
+    const data = {
+      businessName: document.getElementById('vendor-name').value,
+      businessAddress: document.getElementById('vendor-address').value,
+      proofOfOwnership: document.getElementById('vendor-proof').value
+    };
+
+    fetch(`${API_BASE}/api/owner/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    })
+    .then(res => {
+      if (res.ok) {
+        alert("Đăng ký thành công! Yêu cầu của bạn đang chờ Admin duyệt.");
+        document.getElementById('vendor-modal').classList.remove('active');
+        document.getElementById('vendor-form').reset();
+      } else {
+        alert("Lỗi đăng ký chủ quán.");
+      }
+    })
+    .catch(err => console.error("Lỗi POST vendor:", err))
+    .finally(() => btn.disabled = false);
+  }
+
+  // ====== 11. YÊU THÍCH (FAVORITES) ======
+  function checkFavoriteStatus(poiId) {
+    const token = localStorage.getItem('token');
+    const favBtn = document.getElementById('toggle-fav-btn');
+    if (!token) {
+      favBtn.style.display = 'none';
+      return;
+    }
+    
+    favBtn.style.display = 'inline-block';
+    fetch(`${API_BASE}/api/favorites/check/${poiId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(isFav => {
+      if (isFav) {
+        favBtn.innerHTML = '❤️ Đã lưu';
+        favBtn.style.background = '#e91e63';
+        favBtn.style.color = 'white';
+      } else {
+        favBtn.innerHTML = '🤍 Lưu';
+        favBtn.style.background = 'white';
+        favBtn.style.color = '#e91e63';
+      }
+    })
+    .catch(err => console.error("Lỗi check favorite:", err));
+  }
+
+  function toggleFavorite() {
+    if (!currentPoiForReview) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch(`${API_BASE}/api/favorites/${currentPoiForReview}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      checkFavoriteStatus(currentPoiForReview);
+    })
+    .catch(err => console.error("Lỗi toggle favorite:", err));
+  }
+
+  function openFavoritesModal() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    document.getElementById('favorites-modal').classList.add('active');
+    const listEl = document.getElementById('favorites-list');
+    listEl.innerHTML = '<div style="text-align:center; padding: 20px;">Đang tải...</div>';
+
+    fetch(`${API_BASE}/api/favorites`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(favorites => {
+      listEl.innerHTML = '';
+      if (favorites.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding: 20px; color:var(--muted);">Bạn chưa lưu địa điểm nào.</div>';
+        return;
+      }
+
+      favorites.forEach(f => {
+        const date = new Date(f.createdAt).toLocaleDateString('vi-VN');
+        listEl.innerHTML += `
+          <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h4 style="margin: 0 0 4px; color: var(--primary); cursor: pointer;" onclick="playFavorite(${f.poiId})">📌 ${f.poiName}</h4>
+              <div style="font-size: 0.8rem; color: var(--muted);">Lưu ngày: ${date}</div>
+            </div>
+            <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: #c0392b; color: white;" onclick="playFavorite(${f.poiId})">Nghe</button>
+          </div>
+        `;
+      });
+    })
+    .catch(err => {
+      console.error("Lỗi tải danh sách yêu thích:", err);
+      listEl.innerHTML = '<div style="color:red; text-align:center;">Lỗi tải dữ liệu.</div>';
+    });
+  }
+
+  function playFavorite(poiId) {
+    document.getElementById('favorites-modal').classList.remove('active');
+    window.playPoiById(poiId);
+  }
+
 </script>
 </body>
 </html>
