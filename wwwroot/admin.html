@@ -201,7 +201,7 @@
 
         <table>
           <thead>
-            <tr><th>ID</th><th>Tên</th><th>Tọa độ</th><th>Bán kính</th><th>Audio</th><th>Thao tác</th></tr>
+            <tr><th>ID</th><th>Tên</th><th>Tọa độ</th><th>Bán kính</th><th>Audio</th><th>Bản dịch</th><th>Thao tác</th></tr>
           </thead>
           <tbody id="poi-tbody"></tbody>
         </table>
@@ -425,6 +425,11 @@ function renderPoiTable(pois) {
     const audioTags = (poi.audios || []).map(a =>
       `<span class="badge-active">${a.languageCode}</span>`
     ).join('') || '<span style="color:#aaa">—</span>';
+    const locs = poi.localizations || [];
+    const localeBadges = ['en', 'ko', 'zh'].map(lang => {
+      const hasLoc = locs.some(l => l.languageCode === lang);
+      return `<span class="${hasLoc ? 'badge-active' : 'badge-inactive'}">${lang}</span>`;
+    }).join(' ');
     tbody.innerHTML += `
       <tr>
         <td>#${poi.id}</td>
@@ -432,7 +437,9 @@ function renderPoiTable(pois) {
         <td>${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}</td>
         <td>${poi.radius}m</td>
         <td>${audioTags}</td>
+        <td>${localeBadges}</td>
         <td>
+          <button class="btn btn-secondary" onclick="autoTranslatePoi(${poi.id})" title="Tự động dịch">🌐 Dịch</button>
           <button class="btn btn-danger" onclick="deletePoi(${poi.id})">Xóa</button>
         </td>
       </tr>
@@ -453,6 +460,31 @@ function deletePoi(id) {
     .catch(err => console.error("Lỗi xóa POI:", err));
 }
 
+async function autoTranslatePoi(id) {
+  if (!confirm(`Tự động dịch POI #${id} sang tiếng Anh, Hàn, Trung?`)) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang dịch...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/POI/${id}/auto-translate`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (res.ok) {
+      alert('✅ Đã dịch tự động! Vui lòng đợi vài giây rồi tải lại trang để xem kết quả.');
+      setTimeout(() => loadPois(), 3000);
+    } else {
+      alert('❌ Lỗi dịch tự động');
+    }
+  } catch (err) {
+    console.error("Lỗi auto-translate:", err);
+    alert('❌ Lỗi kết nối');
+  }
+  btn.disabled = false;
+  btn.textContent = '🌐 Dịch';
+}
+
 // Add POI form
 document.getElementById('poi-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -469,7 +501,13 @@ document.getElementById('poi-form').addEventListener('submit', (e) => {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(newPoi)
   })
-    .then(res => { if (res.ok) { alert("Thêm POI thành công!"); e.target.reset(); loadPois(); } else alert("Lỗi khi thêm POI."); })
+    .then(res => {
+      if (res.ok) {
+        alert("Thêm POI thành công! Bản dịch tự động (EN/KO/ZH) đang được tạo trong nền.");
+        e.target.reset();
+        setTimeout(() => loadPois(), 2000);
+      } else alert("Lỗi khi thêm POI.");
+    })
     .catch(err => console.error("Lỗi POST POI:", err));
 });
 

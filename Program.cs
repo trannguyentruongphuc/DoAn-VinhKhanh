@@ -11,8 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<TourGuideContext>(options =>
     options.UseSqlite("Data Source=TourGuide.db"));
 
-// 2. Đăng ký AudioService cho TTS tự động
-builder.Services.AddScoped<AudioService>();
+// 2. Đăng ký TranslationService cho dịch tự động
+builder.Services.AddScoped<TranslationService>();
 
 // 2. Đăng ký Controllers
 builder.Services.AddControllers().AddJsonOptions(options =>

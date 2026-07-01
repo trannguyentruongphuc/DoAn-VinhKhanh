@@ -43,7 +43,6 @@ namespace TourGuideApp.Models
 
         public List<Review> Reviews { get; set; } = new List<Review>();
         
-        [JsonIgnore]
         public ICollection<PoiLocalization>? Localizations { get; set; }
 
         [JsonIgnore]

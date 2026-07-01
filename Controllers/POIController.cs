@@ -13,12 +13,12 @@ namespace TourGuideApp.Controllers
     public class POIController : ControllerBase
     {
         private readonly TourGuideContext _context;
-        private readonly AudioService _audioService;
+        private readonly TranslationService _translationService;
 
-        public POIController(TourGuideContext context, AudioService audioService)
+        public POIController(TourGuideContext context, TranslationService translationService)
         {
             _context = context;
-            _audioService = audioService;
+            _translationService = translationService;
         }
 
         private int? GetCurrentUserId()
@@ -90,22 +90,8 @@ namespace TourGuideApp.Controllers
             _context.POIs.Add(poi);
             await _context.SaveChangesAsync();
 
-            // Tự động tạo audio từ description nếu có
-            if (!string.IsNullOrWhiteSpace(poi.Description))
-            {
-                var audioUrl = await _audioService.GenerateAudioFileAsync(
-                    poi.Description, "vi", poi.Id, "vi"
-                );
-
-                _context.Audios.Add(new Audio
-                {
-                    POIId = poi.Id,
-                    LanguageCode = "vi",
-                    TranscriptText = poi.Description,
-                    AudioUrl = audioUrl ?? string.Empty
-                });
-                await _context.SaveChangesAsync();
-            }
+            // Tự động dịch POI sang các ngôn ngữ khác (en, ko, zh)
+            _ = _translationService.AutoTranslatePOIAsync(poi);
 
             return CreatedAtAction(nameof(GetById), new { id = poi.Id }, poi);
         }
@@ -127,8 +113,6 @@ namespace TourGuideApp.Controllers
                 return Forbid();
             }
 
-            var descriptionChanged = poi.Description != updated.Description;
-
             poi.Name = updated.Name;
             poi.Description = updated.Description;
             poi.Lat = updated.Lat;
@@ -136,35 +120,12 @@ namespace TourGuideApp.Controllers
             poi.Radius = updated.Radius;
             poi.Priority = updated.Priority;
 
-            // Tự động regenerate audio nếu description thay đổi
-            if (descriptionChanged && !string.IsNullOrWhiteSpace(updated.Description))
+            var descriptionChanged = poi.Description != updated.Description;
+
+            // Tự động dịch lại nếu description thay đổi
+            if (descriptionChanged)
             {
-                // Lấy hoặc tạo audio cho ngôn ngữ mặc định (vi)
-                var audio = await _context.Audios
-                    .FirstOrDefaultAsync(a => a.POIId == id && a.LanguageCode == "vi");
-
-                var newAudioUrl = await _audioService.GenerateAudioFileAsync(
-                    updated.Description, "vi", id, "vi"
-                );
-
-                if (audio != null)
-                {
-                    // Update existing audio
-                    await _audioService.DeleteAudioFileAsync(audio.AudioUrl);
-                    audio.TranscriptText = updated.Description;
-                    audio.AudioUrl = newAudioUrl ?? audio.AudioUrl;
-                }
-                else
-                {
-                    // Tạo audio mới
-                    _context.Audios.Add(new Audio
-                    {
-                        POIId = id,
-                        LanguageCode = "vi",
-                        TranscriptText = updated.Description,
-                        AudioUrl = newAudioUrl ?? string.Empty
-                    });
-                }
+                _ = _translationService.AutoTranslatePOIAsync(poi);
             }
 
             await _context.SaveChangesAsync();
@@ -249,6 +210,87 @@ namespace TourGuideApp.Controllers
             _context.PoiLocalizations.Remove(loc);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        // POST /api/pois/{id}/auto-translate -> tự động dịch POI sang các ngôn ngữ khác
+        [Authorize(Roles = "Admin,Vendor")]
+        [HttpPost("{id}/auto-translate")]
+        public async Task<IActionResult> AutoTranslate(int id)
+        {
+            var poi = await _context.POIs.FindAsync(id);
+            if (poi == null) return NotFound("POI not found");
+
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+            if (role == "Vendor" && poi.VendorId != userId)
+                return Forbid();
+
+            await _translationService.AutoTranslatePOIAsync(poi);
+
+            // Reload POI để trả về data mới
+            var updatedPoi = await _context.POIs
+                .Include(p => p.Localizations)
+                .Include(p => p.Audios)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            return Ok(new {
+                message = "Đã bắt đầu dịch tự động",
+                poi = updatedPoi
+            });
+        }
+
+        // POST /api/pois/{id}/translate/{lang} -> dịch POI sang một ngôn ngữ cụ thể (dùng cho user app)
+        [HttpPost("{id}/translate/{lang}")]
+        public async Task<IActionResult> TranslateToLanguage(int id, string lang)
+        {
+            if (lang == "vi")
+                return Ok(new { message = "Không cần dịch tiếng Việt" });
+
+            var poi = await _context.POIs.FindAsync(id);
+            if (poi == null) return NotFound("POI not found");
+
+            // Kiểm tra đã có bản dịch chưa
+            var existingLoc = await _context.PoiLocalizations
+                .FirstOrDefaultAsync(l => l.POIId == id && l.LanguageCode == lang);
+
+            if (existingLoc != null && !string.IsNullOrWhiteSpace(existingLoc.TranslatedDescription))
+            {
+                return Ok(new {
+                    translatedName = existingLoc.TranslatedName,
+                    translatedDescription = existingLoc.TranslatedDescription,
+                    source = "cached"
+                });
+            }
+
+            // Gọi dịch
+            var translatedName = await _translationService.TranslateAsync(poi.Name, lang);
+            var translatedDesc = !string.IsNullOrWhiteSpace(poi.Description)
+                ? await _translationService.TranslateAsync(poi.Description, lang)
+                : translatedName ?? poi.Name;
+
+            // Lưu vào DB
+            if (existingLoc != null)
+            {
+                existingLoc.TranslatedName = translatedName ?? existingLoc.TranslatedName;
+                existingLoc.TranslatedDescription = translatedDesc ?? existingLoc.TranslatedDescription;
+            }
+            else
+            {
+                _context.PoiLocalizations.Add(new PoiLocalization
+                {
+                    POIId = id,
+                    LanguageCode = lang,
+                    TranslatedName = translatedName ?? poi.Name,
+                    TranslatedDescription = translatedDesc
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok(new {
+                translatedName = translatedName ?? poi.Name,
+                translatedDescription = translatedDesc,
+                source = "translated"
+            });
         }
     }
 

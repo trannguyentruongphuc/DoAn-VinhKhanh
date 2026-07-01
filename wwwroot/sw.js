@@ -54,10 +54,15 @@ self.addEventListener('fetch', event => {
 
   // API requests - network first, fallback to cache
   if (url.pathname.startsWith('/api/')) {
+    // Không cache TTS endpoint vì trả về audio stream (có thể 206 Partial Content)
+    if (url.pathname.startsWith('/api/Tts')) {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(
       fetch(request)
         .then(response => {
-          if (response.ok) {
+          if (response && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
               cache.put(request, clone);
@@ -76,7 +81,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(networkResponse => {
-          if (networkResponse && networkResponse.ok) {
+          if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
           }
@@ -100,7 +105,9 @@ self.addEventListener('fetch', event => {
           return fetch(request)
             .then(networkResponse => {
               const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+              if (clone.status === 200) {
+                caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+              }
               return networkResponse;
             });
         })
@@ -114,7 +121,7 @@ self.addEventListener('fetch', event => {
       .then(response => {
         return response || fetch(request)
           .then(networkResponse => {
-            if (networkResponse.ok) {
+            if (networkResponse && networkResponse.status === 200) {
               const clone = networkResponse.clone();
               caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
             }
