@@ -71,20 +71,18 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Map tiles - cache first with network fallback
+  // Map tiles - network first, fallback to cache when offline
   if (url.hostname.includes('tile') || url.hostname.includes('openstreetmap') || url.hostname.includes('carto')) {
     event.respondWith(
-      caches.match(request)
-        .then(response => {
-          if (response) return response;
-          return fetch(request)
-            .then(networkResponse => {
-              const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-              return networkResponse;
-            });
+      fetch(request)
+        .then(networkResponse => {
+          if (networkResponse && networkResponse.ok) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          }
+          return networkResponse;
         })
-        .catch(() => new Response('', { status: 503 }))
+        .catch(() => caches.match(request))
     );
     return;
   }
