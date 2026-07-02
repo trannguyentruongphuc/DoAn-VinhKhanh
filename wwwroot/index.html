@@ -861,6 +861,10 @@ const Audio = {
     this.el.currentTime = 0;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
+    App.currentPoiId = poi.id;
+    Reviews.currentPoiId = poi.id;
+    Favorites.currentPoiId = poi.id;
+
     const name = translatedName || I18n.getName(poi, I18n.current) || poi.name;
     const text = transcriptText || translatedDesc || I18n.getDesc(poi, I18n.current) || poi.description;
 
@@ -916,6 +920,10 @@ const Audio = {
   },
 
   showNoAudio(poi, textToSpeak) {
+    App.currentPoiId = poi.id;
+    Reviews.currentPoiId = poi.id;
+    Favorites.currentPoiId = poi.id;
+
     const container = document.getElementById('now-playing');
     document.getElementById('np-title').textContent = I18n.getName(poi, I18n.current) || poi.name;
     document.getElementById('np-desc').textContent = textToSpeak;
@@ -1167,7 +1175,10 @@ const Reviews = {
 
 // ====== 11. FAVORITES MODULE ======
 const Favorites = {
+  currentPoiId: null,
+
   check(poiId) {
+    this.currentPoiId = poiId;
     const token = localStorage.getItem('user_token');
     const btn = document.getElementById('toggle-fav-btn');
     if (!token) { btn.style.display = 'none'; return; }
@@ -1183,8 +1194,8 @@ const Favorites = {
 
   toggle() {
     const token = localStorage.getItem('user_token');
-    if (!token || !Reviews.currentPoiId) return;
-    fetch(`${API_BASE}/api/favorites/${Reviews.currentPoiId}`, {
+    if (!token || !this.currentPoiId) return;
+    fetch(`${API_BASE}/api/favorites/${this.currentPoiId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     }).then(() => this.check(Reviews.currentPoiId)).catch(() => {});

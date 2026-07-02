@@ -313,6 +313,7 @@
       <!-- ==================== 6. ANALYTICS ==================== -->
       <section id="section-analytics" class="card" style="display:none;">
         <h3>6. Thống kê lượt nghe</h3>
+        <div id="total-listens" style="font-size:1.1rem;margin-bottom:16px;padding:12px;background:#f0f0f0;border-radius:8px;text-align:center;"></div>
         <p id="chart-placeholder">Đang tải dữ liệu thống kê...</p>
         <canvas id="topPoisChart" height="120"></canvas>
         <div id="activity-log" style="margin-top:20px;"></div>
@@ -807,6 +808,16 @@ function approveRegistration(id) {
 }
 
 // ====== ANALYTICS ======
+function loadTotalListens() {
+  fetch(`${API_BASE}/api/Analytics/total`)
+    .then(res => res.json())
+    .then(data => {
+      const el = document.getElementById('total-listens');
+      if (el) el.innerHTML = `📊 <strong>Tổng lượt nghe:</strong> <span style="color:#c0392b;font-size:1.3rem;">${data.total}</span> lượt`;
+    })
+    .catch(() => {});
+}
+
 function loadTopPoisChart() {
   fetch(`${API_BASE}/api/Analytics/top-pois`)
     .then(res => { if (!res.ok) throw new Error("API chưa có"); return res.json(); })
@@ -877,6 +888,7 @@ function initDashboard() {
   loadUsers();
   loadReviews();
   loadApprovals();
+  loadTotalListens();
   loadTopPoisChart();
   loadActivityLog();
 }

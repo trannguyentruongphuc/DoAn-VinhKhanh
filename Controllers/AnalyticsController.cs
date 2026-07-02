@@ -37,6 +37,14 @@ namespace TourGuideApp.Controllers
             return Ok(data);
         }
 
+        // GET /api/Analytics/total -> Tổng số lượt nghe
+        [HttpGet("total")]
+        public async Task<IActionResult> GetTotalListens()
+        {
+            var total = await _context.ListenHistories.CountAsync();
+            return Ok(new { total });
+        }
+
     // POST /api/Analytics/increment/{poiId}?lang=vi -> Ghi nhận 1 lượt nghe
         [HttpPost("increment/{poiId}")]
         public async Task<IActionResult> LogListenHistory(int poiId, [FromQuery] string lang = "vi")
