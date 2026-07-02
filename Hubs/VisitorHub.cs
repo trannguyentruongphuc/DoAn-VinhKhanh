@@ -9,10 +9,11 @@ namespace TourGuideApp.Hubs
     {
         private static int _visitorCount = 0;
 
-        public async Task JoinAsVisitor()
+        public async Task JoinAsVisitor(int multiplier = 1)
         {
-            Interlocked.Increment(ref _visitorCount);
+            Interlocked.Add(ref _visitorCount, multiplier);
             Context.Items["IsVisitor"] = true;
+            Context.Items["Multiplier"] = multiplier;
             await Clients.All.SendAsync("UpdateVisitorCount", _visitorCount);
         }
 
@@ -25,7 +26,8 @@ namespace TourGuideApp.Hubs
         {
             if (Context.Items.TryGetValue("IsVisitor", out var isVisitor) && isVisitor is true)
             {
-                Interlocked.Decrement(ref _visitorCount);
+                int multiplier = Context.Items.TryGetValue("Multiplier", out var m) ? (int)m : 1;
+                Interlocked.Add(ref _visitorCount, -multiplier);
                 await Clients.All.SendAsync("UpdateVisitorCount", _visitorCount);
             }
             await base.OnDisconnectedAsync(exception);

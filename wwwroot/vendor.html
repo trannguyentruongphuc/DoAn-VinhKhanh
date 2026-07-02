@@ -620,9 +620,9 @@
   const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' : `${window.location.protocol}//${window.location.hostname}:5555`;
 
   // ============ Auth Functions ============
-  function getToken() { return localStorage.getItem('token'); }
+  function getToken() { return localStorage.getItem('vendor_token'); }
   function getUser() {
-    const u = localStorage.getItem('user');
+    const u = localStorage.getItem('vendor_user');
     return u ? JSON.parse(u) : null;
   }
 
@@ -674,8 +674,8 @@
   }
 
   function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('vendor_token');
+    localStorage.removeItem('vendor_user');
     window.location.href = '/vendor.html';
   }
 
@@ -869,8 +869,8 @@
         showMessage('auth-message', 'Bạn không có quyền truy cập trang Vendor', 'error');
         return;
       }
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('vendor_token', data.token);
+      localStorage.setItem('vendor_user', JSON.stringify(data.user));
       window.location.href = '/vendor.html';
     } else {
       showMessage('auth-message', data.message || 'Đăng nhập thất bại', 'error');
@@ -918,7 +918,7 @@
     
     if (res.ok) {
       const updated = await res.json();
-      localStorage.setItem('user', JSON.stringify({...user, ...updated}));
+      localStorage.setItem('vendor_user', JSON.stringify({...user, ...updated}));
       closeModal('store-modal');
       loadStoreInfo();
       alert('Cập nhật thành công!');

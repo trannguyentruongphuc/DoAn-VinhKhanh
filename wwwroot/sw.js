@@ -11,13 +11,19 @@ const STATIC_ASSETS = [
 const CACHE_VERSION = 'v2';
 const MAX_CACHE_SIZE = 50;
 
-// Install - cache static assets
+// Install - cache static assets (từng file, không fail hết nếu 1 file lỗi)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
+      .then(async cache => {
         console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        for (const url of STATIC_ASSETS) {
+          try {
+            await cache.add(url);
+          } catch (err) {
+            console.warn('[SW] Failed to cache:', url, err);
+          }
+        }
       })
       .then(() => self.skipWaiting())
   );

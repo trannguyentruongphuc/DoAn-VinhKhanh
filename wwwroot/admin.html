@@ -326,14 +326,14 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5555' 
 
 // ====== HELPERS ======
 function getAuthHeaders() {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('admin_token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
 // ====== CHECK AUTH ======
 function checkAuth() {
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
+  const token = localStorage.getItem('admin_token');
+  const user = localStorage.getItem('admin_user');
   if (!token || !user) {
     document.getElementById('login-overlay').classList.add('active');
     return false;
@@ -348,17 +348,17 @@ function checkAuth() {
     document.getElementById('username-display').textContent = `👤 ${userData.username} (Admin)`;
     return true;
   } catch (e) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
     document.getElementById('login-overlay').classList.add('active');
     return false;
   }
 }
 
 function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  window.location.href = '/index.html';
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_user');
+  window.location.href = '/admin.html';
 }
 
 // ====== HANDLE LOGIN ======
@@ -376,8 +376,8 @@ document.getElementById('admin-login-form').addEventListener('submit', async (e)
     });
     const data = await res.json();
     if (res.ok && data.token) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('admin_token', data.token);
+      localStorage.setItem('admin_user', JSON.stringify(data.user));
       document.getElementById('login-overlay').classList.remove('active');
       document.getElementById('username-display').textContent = `👤 ${data.user.username} (Admin)`;
       initDashboard();
